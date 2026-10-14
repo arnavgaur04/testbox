@@ -98,6 +98,32 @@ func (e *Engine) Down(repoPath string) error {
 	return deployer.Down(repoPath, composeFile)
 }
 
+// Status returns compose ps output. Read-only. It regenerates the file if auto_generate is true.
+func (e *Engine) Status(repoPath string) (string, error) {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return "", err
+	}
+	composeFile, err := e.resolveComposeFile(repoPath, config)
+	if err != nil {
+		return "", err
+	}
+	return deployer.Status(repoPath, composeFile)
+}
+
+// Logs returns compose logs. service is optional. tail is line count, default 100.
+func (e *Engine) Logs(repoPath string, service string, tail string) (string, error) {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return "", err
+	}
+	composeFile, err := e.resolveComposeFile(repoPath, config)
+	if err != nil {
+		return "", err
+	}
+	return deployer.Logs(repoPath, composeFile, service, tail)
+}
+
 // Run does Build then Up. Full local deploy in one step.
 func (e *Engine) Run(repoPath string) error {
 	if err := e.Build(repoPath); err != nil {
