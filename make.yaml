@@ -1,0 +1,15 @@
+app:
+  name: "my-test-app"
+  version: "0.1.0"
+
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "my-test-app:latest"
+
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "my-test-app"
+      port: 8080
+
