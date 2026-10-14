@@ -3,7 +3,6 @@ package deployer
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"text/template"
 	testmcp "testbox/internal/mcp"
@@ -130,24 +129,10 @@ func Up(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
 	}
-
-	// Try v2 first.
-	cmd := exec.Command("docker", "compose", "-f", composeFilePath, "up", "-d")
-	cmd.Dir = repoPath
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		fmt.Println("Containers started successfully.")
-		return nil
-	}
-
-	// Fall back to v1.
-	cmd = exec.Command("docker-compose", "-f", composeFilePath, "up", "-d")
-	cmd.Dir = repoPath
-	output, err = cmd.CombinedOutput()
+	output, err := composeOutput(repoPath, composeFilePath, "up", "-d")
 	if err != nil {
-		return fmt.Errorf("compose up failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("compose up failed: %w\nOutput: %s", err, output)
 	}
-
 	fmt.Println("Containers started successfully.")
 	return nil
 }
@@ -157,22 +142,10 @@ func Down(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
 	}
-
-	cmd := exec.Command("docker", "compose", "-f", composeFilePath, "down")
-	cmd.Dir = repoPath
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		fmt.Println("Containers stopped successfully.")
-		return nil
-	}
-
-	cmd = exec.Command("docker-compose", "-f", composeFilePath, "down")
-	cmd.Dir = repoPath
-	output, err = cmd.CombinedOutput()
+	output, err := composeOutput(repoPath, composeFilePath, "down")
 	if err != nil {
-		return fmt.Errorf("compose down failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("compose down failed: %w\nOutput: %s", err, output)
 	}
-
 	fmt.Println("Containers stopped successfully.")
 	return nil
 }
