@@ -25,6 +25,7 @@ func usage() {
 func main() {
 	repoPath := flag.String("repo", ".", "Path to the repository containing make.yaml")
 	tail := flag.String("tail", "100", "Lines of log output for logs command")
+	mcpRef := flag.String("mcp-ref", "master", "Testbox git ref used to build the mcp image")
 	flag.Parse()
 
 	// Command is first non-flag arg. Default is run.
@@ -40,6 +41,7 @@ func main() {
 	}
 
 	eng := engine.NewEngine()
+	eng.McpRef = *mcpRef
 
 	var err error
 	switch cmd {

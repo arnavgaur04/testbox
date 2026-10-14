@@ -30,5 +30,6 @@ jobs:
       - run: ./testbox-tool -repo . run
       - run: sleep 5 && curl --retry 5 --retry-delay 2 -s -o /dev/null -w "HTTP:%{http_code}\n" http://localhost:8080 | grep -q "HTTP:200"
       - run: ./testbox-tool -repo . status
+      - run: ./testbox-tool -repo . status | grep -q mcp
       - run: ./testbox-tool -repo . logs
       - run: ./testbox-tool -repo . down
