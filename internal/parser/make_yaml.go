@@ -76,5 +76,12 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 	}
 
+	// MCP Validation. Section is optional. Only checked when enabled.
+	if config.Mcp != nil && config.Mcp.Enabled {
+		if config.Mcp.OpenAPI == "" && config.Mcp.ToolsFile == "" {
+			return fmt.Errorf("mcp.openapi or mcp.tools_file is required when mcp.enabled is true")
+		}
+	}
+
 	return nil
 }
