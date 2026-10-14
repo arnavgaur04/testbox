@@ -27,8 +27,9 @@ type LocalDeployConfig struct {
 }
 
 type LocalServiceConfig struct {
-	ServiceName string `yaml:"service_name"`
-	Port        int    `yaml:"port"`
+	ServiceName   string `yaml:"service_name"`
+	Port          int    `yaml:"port"`
+	ContainerPort int    `yaml:"container_port,omitempty"`
 }
 
 type HelmConfig struct {
