@@ -23,6 +23,9 @@ const ComposeTemplate = `services:
 // GenerateComposeFile creates a docker-compose.local.yaml in the .testbox directory
 func GenerateComposeFile(repoPath string, config *models.MakeYaml) error {
 	testboxDir := filepath.Join(repoPath, ".testbox")
+	if err := os.MkdirAll(testboxDir, 0755); err != nil {
+		return fmt.Errorf("failed to create .testbox directory: %w", err)
+	}
 	composeFilePath := filepath.Join(testboxDir, "docker-compose.local.yaml")
 
 	// Prepare data for the template
@@ -85,6 +88,9 @@ func Up(repoPath string, composeFilePath string) error {
 
 // Down stops the services in the given compose file.
 func Down(repoPath string, composeFilePath string) error {
+	if _, err := os.Stat(composeFilePath); err != nil {
+		return fmt.Errorf("compose file not found: %s", composeFilePath)
+	}
 
 	cmd := exec.Command("docker", "compose", "-f", composeFilePath, "down")
 	cmd.Dir = repoPath
