@@ -5,6 +5,7 @@ type MakeYaml struct {
 	Docker     DockerConfig     `yaml:"docker"`
 	LocalDeploy LocalDeployConfig `yaml:"local_deploy"`
 	Helm       *HelmConfig      `yaml:"helm,omitempty"` // omitempty if Helm is optional
+	Mcp        *McpConfig       `yaml:"mcp,omitempty"`  // omitempty: no MCP server unless user opts in
 }
 
 type AppConfig struct {
@@ -36,4 +37,12 @@ type HelmConfig struct {
 	ChartPath   string `yaml:"chart_path"`
 	ValuesFile  string `yaml:"values_file,omitempty"`
 	ReleaseName string `yaml:"release_name"`
+}
+
+// McpConfig controls the optional per-service MCP server.
+// Disabled by default. Set enabled: true to opt in.
+type McpConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	OpenAPI   string `yaml:"openapi,omitempty"`    // file path or http(s) URL of OpenAPI spec
+	ToolsFile string `yaml:"tools_file,omitempty"` // file path with custom tool defs and overrides
 }

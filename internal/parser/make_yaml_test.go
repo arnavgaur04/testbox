@@ -137,6 +137,67 @@ func TestMissingFile(t *testing.T) {
 	}
 }
 
+func TestMcpEnabledRequiresSource(t *testing.T) {
+	y := `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+mcp:
+  enabled: true
+`
+	p := writeTempYaml(t, y)
+	if _, err := ParseMakeYaml(p); err == nil {
+		t.Error("expected error when mcp enabled with no openapi or tools_file")
+	}
+}
+
+func TestMcpValid(t *testing.T) {
+	y := `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+mcp:
+  enabled: true
+  openapi: ./openapi.yaml
+  tools_file: ./mcp-tools.yaml
+`
+	p := writeTempYaml(t, y)
+	cfg, err := ParseMakeYaml(p)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Mcp == nil || !cfg.Mcp.Enabled || cfg.Mcp.OpenAPI != "./openapi.yaml" {
+		t.Errorf("wrong mcp config: %+v", cfg.Mcp)
+	}
+}
+
+func TestMcpAbsentIsNil(t *testing.T) {
+	p := writeTempYaml(t, validYaml)
+	cfg, err := ParseMakeYaml(p)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Mcp != nil {
+		t.Errorf("expected nil mcp when section absent, got %+v", cfg.Mcp)
+	}
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
