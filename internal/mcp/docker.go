@@ -64,14 +64,20 @@ func WriteBuildContext(repoPath string, openAPI string, toolsFile string, target
 		Image:         image,
 		DependsOn:     dependsOn,
 	}
-	dir := filepath.Join(repoPath, ".testbox", "mcp")
+	// Compose resolves build context and volumes relative to the compose file
+	// directory (.testbox). Absolute paths keep them exact for any -repo value.
+	absRepo, err := filepath.Abs(repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve repo path: %w", err)
+	}
+	dir := filepath.Join(absRepo, ".testbox", "mcp")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create mcp build dir: %w", err)
 	}
 	info.StageDir = dir
 	// Local spec files are staged for bake or mount. URLs pass through.
 	if openAPI != "" && !isURL(openAPI) {
-		data, err := os.ReadFile(resolveRepoPath(repoPath, openAPI))
+		data, err := os.ReadFile(resolveRepoPath(absRepo, openAPI))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read mcp openapi file: %w", err)
 		}
@@ -84,7 +90,7 @@ func WriteBuildContext(repoPath string, openAPI string, toolsFile string, target
 		info.OpenAPIRef = openAPI
 	}
 	if toolsFile != "" {
-		data, err := os.ReadFile(resolveRepoPath(repoPath, toolsFile))
+		data, err := os.ReadFile(resolveRepoPath(absRepo, toolsFile))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read mcp tools file: %w", err)
 		}

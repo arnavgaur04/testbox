@@ -69,8 +69,7 @@ func TestWriteBuildContextURLPassthrough(t *testing.T) {
 	}
 }
 
-func TestWriteBuildContextPrebuiltImage(t *testing.T) {
-	dir := t.TempDir()
+func TestWriteBuildContextPrebuiltImage(t *testing.T) {	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte("tools: []\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -86,5 +85,26 @@ func TestWriteBuildContextPrebuiltImage(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".testbox", "mcp", "Dockerfile")); !os.IsNotExist(err) {
 		t.Error("prebuilt image must not write Dockerfile")
+	}
+}
+
+// TestWriteBuildContextRelativeRepo mirrors CI: -repo . with cwd inside the repo.
+// BuildContext must be absolute. Compose resolves relative context against the
+// compose file dir (.testbox), which doubled the path to .testbox/.testbox/mcp.
+func TestWriteBuildContextRelativeRepo(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "openapi.yaml"), []byte("openapi: 3.0.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	info, err := WriteBuildContext(".", "./openapi.yaml", "", "http://a:80", 8082, "", []string{"a"})
+	if err != nil {
+		t.Fatalf("write context: %v", err)
+	}
+	if !filepath.IsAbs(info.BuildContext) {
+		t.Errorf("build context must be absolute, got %s", info.BuildContext)
+	}
+	if _, err := os.Stat(filepath.Join(info.BuildContext, "Dockerfile")); err != nil {
+		t.Errorf("Dockerfile must exist at absolute context: %v", err)
 	}
 }
