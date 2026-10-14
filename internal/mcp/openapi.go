@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ParamDef is one tool input. Maps to an OpenAPI path or query parameter.
+// One tool input. Path or query.
 type ParamDef struct {
 	Name     string `yaml:"name"`
 	In       string `yaml:"in"` // path or query
@@ -19,7 +19,7 @@ type ParamDef struct {
 	Type     string `yaml:"type,omitempty"` // string, integer, boolean. Default string.
 }
 
-// ToolDef is one MCP tool. It maps to one HTTP GET endpoint.
+// One MCP tool. One GET endpoint.
 type ToolDef struct {
 	Name        string     `yaml:"name"`
 	Description string     `yaml:"description"`
@@ -28,16 +28,16 @@ type ToolDef struct {
 	Params      []ParamDef `yaml:"params,omitempty"`
 }
 
-// openAPISpec is the minimal subset of OpenAPI we read. GET only for now.
+// Minimal OpenAPI subset. GET only.
 type openAPISpec struct {
 	Paths map[string]map[string]openAPIOperation `yaml:"paths"`
 }
 
 type openAPIOperation struct {
-	OperationID string           `yaml:"operationId"`
-	Summary     string           `yaml:"summary"`
-	Description string           `yaml:"description"`
-	Parameters  []openAPIParam   `yaml:"parameters"`
+	OperationID string         `yaml:"operationId"`
+	Summary     string         `yaml:"summary"`
+	Description string         `yaml:"description"`
+	Parameters  []openAPIParam `yaml:"parameters"`
 }
 
 type openAPIParam struct {
@@ -49,8 +49,8 @@ type openAPIParam struct {
 	} `yaml:"schema"`
 }
 
-// LoadOpenAPITools reads an OpenAPI file or URL and returns one ToolDef per GET operation.
-// Only GET is supported in this phase. Other methods are skipped.
+// One ToolDef per GET op.
+// Skips other methods.
 func LoadOpenAPITools(location string) ([]ToolDef, error) {
 	data, err := readLocation(location)
 	if err != nil {
@@ -92,12 +92,12 @@ func LoadOpenAPITools(location string) ([]ToolDef, error) {
 	return tools, nil
 }
 
-// toolsFile is the shape of the user custom tools file.
+// Shape of the custom tools file.
 type toolsFile struct {
 	Tools []ToolDef `yaml:"tools"`
 }
 
-// LoadCustomTools reads a user tools file. Only GET tools allowed in this phase.
+// Reads custom tools file. GET only.
 func LoadCustomTools(path string) ([]ToolDef, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -127,9 +127,8 @@ func LoadCustomTools(path string) ([]ToolDef, error) {
 	return tf.Tools, nil
 }
 
-// MergeTools combines auto tools with custom tools.
-// A custom tool with the same name replaces the auto tool. This is the edit path.
-// A custom tool with a new name is added. This is the add path.
+// Merges auto + custom tools.
+// Same name replaces. New adds.
 func MergeTools(auto []ToolDef, custom []ToolDef) []ToolDef {
 	byName := map[string]int{}
 	merged := append([]ToolDef{}, auto...)
@@ -147,7 +146,7 @@ func MergeTools(auto []ToolDef, custom []ToolDef) []ToolDef {
 	return merged
 }
 
-// toolName prefers operationId. Falls back to method + path.
+// Prefers operationId. Else method.
 func toolName(operationID string, method string, path string) string {
 	if operationID != "" {
 		return sanitize(operationID)
@@ -155,7 +154,7 @@ func toolName(operationID string, method string, path string) string {
 	return sanitize(method + "_" + path)
 }
 
-// sanitize makes a safe tool name: lowercase, alnum and _ only.
+// Safe name: lower, alnum, _.
 func sanitize(s string) string {
 	s = strings.ToLower(s)
 	var b strings.Builder
@@ -185,7 +184,7 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// readLocation reads a local file or an http(s) URL.
+// Reads local file or http URL.
 func readLocation(location string) ([]byte, error) {
 	if strings.HasPrefix(location, "http://") || strings.HasPrefix(location, "https://") {
 		client := &http.Client{Timeout: 15 * time.Second}

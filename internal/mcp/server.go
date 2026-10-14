@@ -13,10 +13,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// maxBody limits tool output. AI context is finite. 8000 chars is enough for most APIs.
+// Caps tool output length.
+// AI context is finite.
 const maxBody = 8000
 
-// BuildServer registers one MCP tool per ToolDef. All tools run HTTP GET.
+// Registers one tool per def.
+// All tools run HTTP GET.
 func BuildServer(name string, defs []ToolDef, targetBase string) *server.MCPServer {
 	s := server.NewMCPServer(name, "0.1.0")
 	for _, def := range defs {
@@ -36,7 +38,7 @@ func BuildServer(name string, defs []ToolDef, targetBase string) *server.MCPServ
 	return s
 }
 
-// paramOption maps a ParamDef to an mcp-go tool option.
+// Maps ParamDef to tool option.
 func paramOption(p ParamDef) mcplib.ToolOption {
 	desc := fmt.Sprintf("%s parameter %s", p.In, p.Name)
 	switch p.Type {
@@ -58,15 +60,15 @@ func paramOption(p ParamDef) mcplib.ToolOption {
 	}
 }
 
-// runGET builds the URL from path template + query params and runs the request.
+// Builds URL and runs GET.
 func runGET(ctx context.Context, base string, def ToolDef, req mcplib.CallToolRequest) (string, error) {
 	return ExecGET(ctx, base, def, req.GetArguments())
 }
 
-// ExecGET is the testable core of runGET. args maps param name to value.
+// Testable core of runGET.
 func ExecGET(ctx context.Context, base string, def ToolDef, args map[string]any) (string, error) {
 	path := def.Path
-	// Path params fill {name} slots. Missing required param is an error.
+	// Fill {name} path slots.
 	for _, p := range def.Params {
 		if p.In != "path" {
 			continue
@@ -77,7 +79,7 @@ func ExecGET(ctx context.Context, base string, def ToolDef, args map[string]any)
 		}
 		path = strings.ReplaceAll(path, "{"+p.Name+"}", url.PathEscape(fmt.Sprint(val)))
 	}
-	// Query params go to the query string. Skip empty optional ones.
+	// Skip empty optional params.
 	query := url.Values{}
 	for _, p := range def.Params {
 		if p.In != "query" {

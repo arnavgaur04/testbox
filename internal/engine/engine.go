@@ -12,7 +12,7 @@ import (
 
 type Engine struct {
 	builder *docker.Builder
-	// McpRef is the testbox git ref used to build the mcp image. Default master.
+	// Git ref for mcp image build.
 	McpRef string
 }
 
@@ -23,13 +23,13 @@ func NewEngine() *Engine {
 	}
 }
 
-// LoadConfig reads make.yaml from repoPath.
+// Reads make.yaml from repo.
 func (e *Engine) LoadConfig(repoPath string) (*models.MakeYaml, error) {
 	configPath := filepath.Join(repoPath, "make.yaml")
 	return parser.ParseMakeYaml(configPath)
 }
 
-// ensureTestboxDir creates .testbox dir. It holds generated files.
+// Creates .testbox workspace dir.
 func (e *Engine) ensureTestboxDir(repoPath string) (string, error) {
 	testboxDir := filepath.Join(repoPath, ".testbox")
 	if err := os.MkdirAll(testboxDir, 0755); err != nil {
@@ -38,9 +38,8 @@ func (e *Engine) ensureTestboxDir(repoPath string) (string, error) {
 	return testboxDir, nil
 }
 
-// resolveComposeFile returns the compose file to use.
-// If auto_generate is true, it generates the file and returns its path.
-// If false, it resolves the user file path.
+// Picks generated or user compose.
+// Generates when auto is true.
 func (e *Engine) resolveComposeFile(repoPath string, config *models.MakeYaml) (string, error) {
 	testboxDir, err := e.ensureTestboxDir(repoPath)
 	if err != nil {
@@ -59,7 +58,7 @@ func (e *Engine) resolveComposeFile(repoPath string, config *models.MakeYaml) (s
 	return p, nil
 }
 
-// Build parses config and builds the image.
+// Builds the image from config.
 func (e *Engine) Build(repoPath string) error {
 	if _, err := e.ensureTestboxDir(repoPath); err != nil {
 		return err
@@ -68,14 +67,13 @@ func (e *Engine) Build(repoPath string) error {
 	if err != nil {
 		return err
 	}
-	// Join repoPath with relative context.
-	// Example: repoPath=/tmp/app + context=. = /tmp/app
+	// Context joins repo + rel path.
 	config.Docker.Context = filepath.Join(repoPath, config.Docker.Context)
 	fmt.Printf("Building app: %s\n", config.App.Name)
 	return e.builder.Build(config.Docker)
 }
 
-// Up prepares the compose file and starts services.
+// Starts services via compose.
 func (e *Engine) Up(repoPath string) error {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
@@ -88,7 +86,7 @@ func (e *Engine) Up(repoPath string) error {
 	return deployer.Up(repoPath, composeFile)
 }
 
-// Down stops services.
+// Stops services via compose.
 func (e *Engine) Down(repoPath string) error {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
@@ -101,7 +99,7 @@ func (e *Engine) Down(repoPath string) error {
 	return deployer.Down(repoPath, composeFile)
 }
 
-// Status returns compose ps output. Read-only. It regenerates the file if auto_generate is true.
+// Returns compose ps output.
 func (e *Engine) Status(repoPath string) (string, error) {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
@@ -114,7 +112,7 @@ func (e *Engine) Status(repoPath string) (string, error) {
 	return deployer.Status(repoPath, composeFile)
 }
 
-// Logs returns compose logs. service is optional. tail is line count, default 100.
+// Returns compose logs output.
 func (e *Engine) Logs(repoPath string, service string, tail string) (string, error) {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
@@ -127,12 +125,12 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 	return deployer.Logs(repoPath, composeFile, service, tail)
 }
 
-// Run does Build then Up. Full local deploy in one step.
+// Build then Up in one step.
 func (e *Engine) Run(repoPath string) error {
 	if err := e.Build(repoPath); err != nil {
 		return err
 	}
-	// Load again for deploy step. Config is small. This keeps steps separate.
+	// Config is small. Reload it here.
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return err

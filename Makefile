@@ -1,4 +1,4 @@
-.PHONY: vet test build install
+.PHONY: vet test build install lint
 
 vet:
 	go vet ./...
@@ -8,6 +8,11 @@ test:
 
 build:
 	go build ./...
+
+lint:
+	test -z "$$(gofmt -l cmd internal pkg)"
+	go vet ./...
+	sh scripts/check-comments.sh
 
 install:
 	go build -o $$(go env GOPATH)/bin/testbox-tool ./cmd/core-service

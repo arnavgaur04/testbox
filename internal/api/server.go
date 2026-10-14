@@ -6,8 +6,8 @@ import (
 	"testbox/internal/engine"
 )
 
-// Server holds the Engine. All handlers use it.
-// This keeps HTTP logic thin. Engine holds all real logic.
+// Holds the Engine for handlers.
+// HTTP stays thin. Logic in Engine.
 type Server struct {
 	eng *engine.Engine
 }
@@ -16,19 +16,19 @@ func NewServer() *Server {
 	return &Server{eng: engine.NewEngine()}
 }
 
-// repoRequest is the common body for build/up/down/run/status.
+// Common body for most routes.
 type repoRequest struct {
 	Repo string `json:"repo"`
 }
 
-// logsRequest adds optional service and tail.
+// Body for logs. Service optional.
 type logsRequest struct {
 	Repo    string `json:"repo"`
 	Service string `json:"service"`
 	Tail    string `json:"tail"`
 }
 
-// response is the common reply. ok=false on error.
+// Reply shape. ok=false on error.
 type response struct {
 	OK     bool   `json:"ok"`
 	Output string `json:"output,omitempty"`
@@ -59,7 +59,7 @@ func (s *Server) decodeRepo(w http.ResponseWriter, r *http.Request) (string, boo
 	return req.Repo, true
 }
 
-// handleBuild runs Engine.Build.
+// Runs Engine.Build.
 func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
@@ -76,7 +76,7 @@ func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, "build completed")
 }
 
-// handleUp runs Engine.Up.
+// Runs Engine.Up.
 func (s *Server) handleUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
@@ -93,7 +93,7 @@ func (s *Server) handleUp(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, "up completed")
 }
 
-// handleDown runs Engine.Down.
+// Runs Engine.Down.
 func (s *Server) handleDown(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
@@ -110,7 +110,7 @@ func (s *Server) handleDown(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, "down completed")
 }
 
-// handleRun runs Engine.Run (build then up).
+// Runs Build then Up.
 func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
@@ -127,7 +127,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, "run completed")
 }
 
-// handleStatus runs Engine.Status. GET with ?repo=path, or POST with JSON.
+// Status via GET query or POST.
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	repo := r.URL.Query().Get("repo")
 	if r.Method == http.MethodPost {
@@ -150,7 +150,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, out)
 }
 
-// handleLogs runs Engine.Logs. GET with ?repo=&service=&tail=, or POST with JSON.
+// Logs via GET query or POST.
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	repo := r.URL.Query().Get("repo")
 	service := r.URL.Query().Get("service")
@@ -177,12 +177,12 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, out)
 }
 
-// handleHealth is a simple check for load balancers and MCP clients.
+// Liveness check for clients.
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeOK(w, "ok")
 }
 
-// Handler wires all routes. One place for route list.
+// Wires all routes in one place.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
