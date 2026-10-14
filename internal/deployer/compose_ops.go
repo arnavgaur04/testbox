@@ -6,8 +6,8 @@ import (
 	"os/exec"
 )
 
-// composeOutput runs a compose command and returns its output.
-// It tries 'docker compose' (v2) first, then 'docker-compose' (v1).
+// Runs a compose command.
+// Tries v2 first, then v1.
 func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (string, error) {
 	v2Args := append([]string{"compose", "-f", composeFilePath}, opArgs...)
 	cmd := exec.Command("docker", v2Args...)
@@ -28,7 +28,7 @@ func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (s
 	return string(output), nil
 }
 
-// Status returns 'compose ps' output for the given compose file.
+// Returns 'compose ps' output.
 func Status(repoPath string, composeFilePath string) (string, error) {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return "", fmt.Errorf("compose file not found: %s", composeFilePath)
@@ -36,9 +36,8 @@ func Status(repoPath string, composeFilePath string) (string, error) {
 	return composeOutput(repoPath, composeFilePath, "ps")
 }
 
-// Logs returns 'compose logs' output.
-// service is optional. Empty means all services.
-// tail controls --tail lines. Use "all" or a number string. Default "100".
+// Returns 'compose logs' output.
+// Empty service means all.
 func Logs(repoPath string, composeFilePath string, service string, tail string) (string, error) {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return "", fmt.Errorf("compose file not found: %s", composeFilePath)

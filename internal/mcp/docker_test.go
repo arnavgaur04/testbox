@@ -69,7 +69,8 @@ func TestWriteBuildContextURLPassthrough(t *testing.T) {
 	}
 }
 
-func TestWriteBuildContextPrebuiltImage(t *testing.T) {	dir := t.TempDir()
+func TestWriteBuildContextPrebuiltImage(t *testing.T) {
+	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte("tools: []\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -88,9 +89,8 @@ func TestWriteBuildContextPrebuiltImage(t *testing.T) {	dir := t.TempDir()
 	}
 }
 
-// TestWriteBuildContextRelativeRepo mirrors CI: -repo . with cwd inside the repo.
-// BuildContext must be absolute. Compose resolves relative context against the
-// compose file dir (.testbox), which doubled the path to .testbox/.testbox/mcp.
+// Mirrors CI with -repo . in repo.
+// Context must stay absolute.
 func TestWriteBuildContextRelativeRepo(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "openapi.yaml"), []byte("openapi: 3.0.0\n"), 0644); err != nil {

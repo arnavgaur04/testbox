@@ -28,7 +28,8 @@ func main() {
 	mcpRef := flag.String("mcp-ref", "master", "Testbox git ref used to build the mcp image")
 	flag.Parse()
 
-	// Command is first non-flag arg. Default is run.
+	// First non-flag arg is command.
+	// Default is run.
 	cmd := "run"
 	rest := flag.Args()
 	if len(rest) > 0 {

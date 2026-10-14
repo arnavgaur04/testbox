@@ -10,7 +10,7 @@ import (
 	"testbox/pkg/models"
 )
 
-// ParseMakeYaml reads and validates a make.yaml file.
+// Reads and validates make.yaml.
 func ParseMakeYaml(filePath string) (*models.MakeYaml, error) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("make.yaml not found at path: %s", filePath)
@@ -66,8 +66,7 @@ func validateConfig(config *models.MakeYaml) error {
 		if svc.Port <= 0 || svc.Port > 65535 {
 			return fmt.Errorf("invalid port %d for service %s: must be between 1 and 65535", svc.Port, svc.ServiceName)
 		}
-		// Default: container_port = port when user omits it.
-		// This keeps old make.yaml files working.
+		// Empty means same as port.
 		if svc.ContainerPort == 0 {
 			svc.ContainerPort = svc.Port
 		}
@@ -76,7 +75,7 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 	}
 
-	// MCP Validation. Section is optional. Only checked when enabled.
+	// MCP checks. Only when enabled.
 	if config.Mcp != nil && config.Mcp.Enabled {
 		if config.Mcp.OpenAPI == "" && config.Mcp.ToolsFile == "" {
 			return fmt.Errorf("mcp.openapi or mcp.tools_file is required when mcp.enabled is true")

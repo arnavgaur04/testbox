@@ -1,11 +1,11 @@
 package models
 
 type MakeYaml struct {
-	App        AppConfig        `yaml:"app"`
-	Docker     DockerConfig     `yaml:"docker"`
+	App         AppConfig         `yaml:"app"`
+	Docker      DockerConfig      `yaml:"docker"`
 	LocalDeploy LocalDeployConfig `yaml:"local_deploy"`
-	Helm       *HelmConfig      `yaml:"helm,omitempty"` // omitempty if Helm is optional
-	Mcp        *McpConfig       `yaml:"mcp,omitempty"`  // omitempty: no MCP server unless user opts in
+	Helm        *HelmConfig       `yaml:"helm,omitempty"` // omitempty if Helm is optional
+	Mcp         *McpConfig        `yaml:"mcp,omitempty"`  // omitempty: no MCP server unless user opts in
 }
 
 type AppConfig struct {
@@ -14,16 +14,16 @@ type AppConfig struct {
 }
 
 type DockerConfig struct {
-	Context     string   `yaml:"context"`
-	Dockerfile  string   `yaml:"dockerfile"`
-	ImageName   string   `yaml:"image_name"`
-	BuildArgs   []string `yaml:"build_args,omitempty"`
-	Target      string   `yaml:"target,omitempty"`
+	Context    string   `yaml:"context"`
+	Dockerfile string   `yaml:"dockerfile"`
+	ImageName  string   `yaml:"image_name"`
+	BuildArgs  []string `yaml:"build_args,omitempty"`
+	Target     string   `yaml:"target,omitempty"`
 }
 
 type LocalDeployConfig struct {
-	AutoGenerateCompose bool                `yaml:"auto_generate_compose,omitempty"`
-	ComposeFile         string              `yaml:"compose_file,omitempty"` // omitted if auto_generate_compose is true
+	AutoGenerateCompose bool                 `yaml:"auto_generate_compose,omitempty"`
+	ComposeFile         string               `yaml:"compose_file,omitempty"` // omitted if auto_generate_compose is true
 	Services            []LocalServiceConfig `yaml:"services"`
 }
 
@@ -39,8 +39,8 @@ type HelmConfig struct {
 	ReleaseName string `yaml:"release_name"`
 }
 
-// McpConfig controls the optional per-service MCP server.
-// Disabled by default. Set enabled: true to opt in.
+// Optional per-service MCP server.
+// Off unless enabled is true.
 type McpConfig struct {
 	Enabled   bool   `yaml:"enabled"`
 	OpenAPI   string `yaml:"openapi,omitempty"`    // file path or http(s) URL of OpenAPI spec

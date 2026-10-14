@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/template"
 	testmcp "testbox/internal/mcp"
 	"testbox/pkg/models"
+	"text/template"
 )
 
-// ComposeTemplate defines the structure for our auto-generated docker-compose file.
-// Note: No 'version' key. It is obsolete in Compose v2.
+// Template for generated compose.
+// No 'version' key. V2 ignores it.
 const ComposeTemplate = `services:
 {{- range .Services }}
   {{ .ServiceName }}:
@@ -52,8 +52,8 @@ const ComposeTemplate = `services:
 {{- end }}
 `
 
-// GenerateComposeFile creates a docker-compose.local.yaml in the .testbox directory.
-// mcpRef is the testbox git ref used to build the mcp image. Ignored when mcp is off.
+// Writes docker-compose.local.yaml.
+// mcpRef sets the mcp build ref.
 func GenerateComposeFile(repoPath string, config *models.MakeYaml, mcpRef string) error {
 	testboxDir := filepath.Join(repoPath, ".testbox")
 	if err := os.MkdirAll(testboxDir, 0755); err != nil {
@@ -79,7 +79,7 @@ func GenerateComposeFile(repoPath string, config *models.MakeYaml, mcpRef string
 		Mcp:       mcpInfo,
 		McpRef:    mcpRef,
 	}
-	// Template checks .Mcp.Enabled. Nil-safe default when mcp is off.
+	// Nil-safe default when mcp is off.
 	if data.Mcp == nil {
 		data.Mcp = &testmcp.ServiceInfo{}
 	}
@@ -105,8 +105,8 @@ func GenerateComposeFile(repoPath string, config *models.MakeYaml, mcpRef string
 	return nil
 }
 
-// mcpServiceInfo stages the mcp build context when mcp is enabled.
-// Returns nil when mcp is off. Target uses the first local service.
+// Stages mcp build context.
+// Nil when mcp is off.
 func mcpServiceInfo(repoPath string, config *models.MakeYaml) (*testmcp.ServiceInfo, error) {
 	if config.Mcp == nil || !config.Mcp.Enabled {
 		return nil, nil
@@ -123,8 +123,8 @@ func mcpServiceInfo(repoPath string, config *models.MakeYaml) (*testmcp.ServiceI
 	return testmcp.WriteBuildContext(repoPath, config.Mcp.OpenAPI, config.Mcp.ToolsFile, target, config.Mcp.Port, config.Mcp.Image, dependsOn)
 }
 
-// Up runs the given compose file in detached mode.
-// It uses 'docker compose' (v2). It falls back to 'docker-compose' (v1) if v2 is missing.
+// Runs compose up -d.
+// Tries v2 first, then v1.
 func Up(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
@@ -137,7 +137,7 @@ func Up(repoPath string, composeFilePath string) error {
 	return nil
 }
 
-// Down stops the services in the given compose file.
+// Stops compose services.
 func Down(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)

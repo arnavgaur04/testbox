@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 	"testbox/pkg/models"
+	"testing"
 )
 
 func TestGenerateComposeFile(t *testing.T) {

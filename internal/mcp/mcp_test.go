@@ -73,7 +73,7 @@ func TestLoadOpenAPITools(t *testing.T) {
 	if len(getUser.Params) != 2 {
 		t.Errorf("expected 2 params, got %d", len(getUser.Params))
 	}
-	// Path param must be required even if spec omits it.
+	// Path params stay required.
 	for _, pr := range getUser.Params {
 		if pr.Name == "id" && !pr.Required {
 			t.Error("path param id must be required")
