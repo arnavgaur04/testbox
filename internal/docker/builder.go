@@ -9,23 +9,23 @@ import (
 // Builder handles Docker build operations.
 type Builder struct{}
 
-// Build executes a docker build command based on the provided configuration.
-func (b *Builder) Build(config models.DockerConfig) error {
-	// Prepare arguments for: docker build -t <image_name> -f <dockerfile> <context>
+// BuildArgsForTest returns the docker build args. Split out for unit tests.
+// No Docker needed to test this function.
+func BuildArgsForTest(config models.DockerConfig) []string {
 	args := []string{"build", "-t", config.ImageName, "-f", config.Dockerfile}
-
-	// Add build args if present
 	for _, arg := range config.BuildArgs {
 		args = append(args, "--build-arg", arg)
 	}
-
-	// Add target if present
 	if config.Target != "" {
 		args = append(args, "--target", config.Target)
 	}
-
-	// Append context at the end
 	args = append(args, config.Context)
+	return args
+}
+
+// Build executes a docker build command based on the provided configuration.
+func (b *Builder) Build(config models.DockerConfig) error {
+	args := BuildArgsForTest(config)
 
 	cmd := exec.Command("docker", args...)
 	

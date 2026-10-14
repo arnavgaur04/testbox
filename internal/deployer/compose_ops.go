@@ -2,6 +2,7 @@ package deployer
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -29,6 +30,9 @@ func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (s
 
 // Status returns 'compose ps' output for the given compose file.
 func Status(repoPath string, composeFilePath string) (string, error) {
+	if _, err := os.Stat(composeFilePath); err != nil {
+		return "", fmt.Errorf("compose file not found: %s", composeFilePath)
+	}
 	return composeOutput(repoPath, composeFilePath, "ps")
 }
 
@@ -36,6 +40,9 @@ func Status(repoPath string, composeFilePath string) (string, error) {
 // service is optional. Empty means all services.
 // tail controls --tail lines. Use "all" or a number string. Default "100".
 func Logs(repoPath string, composeFilePath string, service string, tail string) (string, error) {
+	if _, err := os.Stat(composeFilePath); err != nil {
+		return "", fmt.Errorf("compose file not found: %s", composeFilePath)
+	}
 	if tail == "" {
 		tail = "100"
 	}
