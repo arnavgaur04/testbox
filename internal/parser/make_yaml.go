@@ -58,12 +58,21 @@ func validateConfig(config *models.MakeYaml) error {
 		return fmt.Errorf("local_deploy.compose_file is required when auto_generate_compose is false")
 	}
 
-	for _, svc := range config.LocalDeploy.Services {
+	for i := range config.LocalDeploy.Services {
+		svc := &config.LocalDeploy.Services[i]
 		if svc.ServiceName == "" {
 			return fmt.Errorf("service_name is required for all local_deploy services")
 		}
 		if svc.Port <= 0 || svc.Port > 65535 {
 			return fmt.Errorf("invalid port %d for service %s: must be between 1 and 65535", svc.Port, svc.ServiceName)
+		}
+		// Default: container_port = port when user omits it.
+		// This keeps old make.yaml files working.
+		if svc.ContainerPort == 0 {
+			svc.ContainerPort = svc.Port
+		}
+		if svc.ContainerPort <= 0 || svc.ContainerPort > 65535 {
+			return fmt.Errorf("invalid container_port %d for service %s: must be between 1 and 65535", svc.ContainerPort, svc.ServiceName)
 		}
 	}
 

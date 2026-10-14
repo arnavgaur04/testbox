@@ -12,4 +12,5 @@ local_deploy:
   services:
     - service_name: "my-test-app"
       port: 8080
+      container_port: 80
 

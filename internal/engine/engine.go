@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"testbox/internal/deployer"
 	"testbox/internal/docker"
 	"testbox/internal/parser"
+	"testbox/pkg/models"
 )
 
 type Engine struct {
@@ -18,30 +20,101 @@ func NewEngine() *Engine {
 	}
 }
 
-func (e *Engine) Run(repoPath string) error {
-	// 1. Setup .testbox directory
+// LoadConfig reads make.yaml from repoPath.
+func (e *Engine) LoadConfig(repoPath string) (*models.MakeYaml, error) {
+	configPath := filepath.Join(repoPath, "make.yaml")
+	return parser.ParseMakeYaml(configPath)
+}
+
+// ensureTestboxDir creates .testbox dir. It holds generated files.
+func (e *Engine) ensureTestboxDir(repoPath string) (string, error) {
 	testboxDir := filepath.Join(repoPath, ".testbox")
 	if err := os.MkdirAll(testboxDir, 0755); err != nil {
-		return fmt.Errorf("failed to create .testbox directory: %w", err)
+		return "", fmt.Errorf("failed to create .testbox directory: %w", err)
 	}
+	return testboxDir, nil
+}
 
-	// 2. Parse config
-	configPath := filepath.Join(repoPath, "make.yaml")
-	config, err := parser.ParseMakeYaml(configPath)
+// resolveComposeFile returns the compose file to use.
+// If auto_generate is true, it generates the file and returns its path.
+// If false, it resolves the user file path.
+func (e *Engine) resolveComposeFile(repoPath string, config *models.MakeYaml) (string, error) {
+	testboxDir, err := e.ensureTestboxDir(repoPath)
+	if err != nil {
+		return "", err
+	}
+	if config.LocalDeploy.AutoGenerateCompose {
+		if err := deployer.GenerateComposeFile(repoPath, config); err != nil {
+			return "", err
+		}
+		return filepath.Join(testboxDir, "docker-compose.local.yaml"), nil
+	}
+	p := config.LocalDeploy.ComposeFile
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(repoPath, p)
+	}
+	return p, nil
+}
+
+// Build parses config and builds the image.
+func (e *Engine) Build(repoPath string) error {
+	if _, err := e.ensureTestboxDir(repoPath); err != nil {
+		return err
+	}
+	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return err
 	}
-
-// 3. Build image
-	// Adjust context if it's relative to repoPath
+	// Join repoPath with relative context.
+	// Example: repoPath=/tmp/app + context=. = /tmp/app
 	config.Docker.Context = filepath.Join(repoPath, config.Docker.Context)
 	fmt.Printf("Building app: %s\n", config.App.Name)
-	if err := e.builder.Build(config.Docker); err != nil {
+	return e.builder.Build(config.Docker)
+}
+
+// Up prepares the compose file and starts services.
+func (e *Engine) Up(repoPath string) error {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
 		return err
 	}
+	composeFile, err := e.resolveComposeFile(repoPath, config)
+	if err != nil {
+		return err
+	}
+	return deployer.Up(repoPath, composeFile)
+}
 
-	// 4. Deployment placeholder
-	fmt.Println("Deployment logic would go here.")
-	
+// Down stops services.
+func (e *Engine) Down(repoPath string) error {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return err
+	}
+	composeFile, err := e.resolveComposeFile(repoPath, config)
+	if err != nil {
+		return err
+	}
+	return deployer.Down(repoPath, composeFile)
+}
+
+// Run does Build then Up. Full local deploy in one step.
+func (e *Engine) Run(repoPath string) error {
+	if err := e.Build(repoPath); err != nil {
+		return err
+	}
+	// Load again for deploy step. Config is small. This keeps steps separate.
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return err
+	}
+	composeFile, err := e.resolveComposeFile(repoPath, config)
+	if err != nil {
+		return err
+	}
+	if err := deployer.Up(repoPath, composeFile); err != nil {
+		return err
+	}
+	fmt.Println("Deployment configuration ready.")
 	return nil
 }
