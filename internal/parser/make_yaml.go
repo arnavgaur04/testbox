@@ -81,6 +81,12 @@ func validateConfig(config *models.MakeYaml) error {
 		if config.Mcp.OpenAPI == "" && config.Mcp.ToolsFile == "" {
 			return fmt.Errorf("mcp.openapi or mcp.tools_file is required when mcp.enabled is true")
 		}
+		if config.Mcp.Port == 0 {
+			config.Mcp.Port = 8082
+		}
+		if config.Mcp.Port <= 0 || config.Mcp.Port > 65535 {
+			return fmt.Errorf("invalid mcp.port %d: must be between 1 and 65535", config.Mcp.Port)
+		}
 	}
 
 	return nil

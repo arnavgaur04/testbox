@@ -14,3 +14,9 @@ local_deploy:
       port: 8080
       container_port: 80
 
+mcp:
+  enabled: true
+  openapi: ./mcp-openapi.yaml
+  tools_file: ./mcp-tools.yaml
+  port: 8082
+

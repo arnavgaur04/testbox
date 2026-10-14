@@ -12,11 +12,14 @@ import (
 
 type Engine struct {
 	builder *docker.Builder
+	// McpRef is the testbox git ref used to build the mcp image. Default master.
+	McpRef string
 }
 
 func NewEngine() *Engine {
 	return &Engine{
 		builder: &docker.Builder{},
+		McpRef:  "master",
 	}
 }
 
@@ -44,7 +47,7 @@ func (e *Engine) resolveComposeFile(repoPath string, config *models.MakeYaml) (s
 		return "", err
 	}
 	if config.LocalDeploy.AutoGenerateCompose {
-		if err := deployer.GenerateComposeFile(repoPath, config); err != nil {
+		if err := deployer.GenerateComposeFile(repoPath, config, e.McpRef); err != nil {
 			return "", err
 		}
 		return filepath.Join(testboxDir, "docker-compose.local.yaml"), nil

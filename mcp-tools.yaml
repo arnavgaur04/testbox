@@ -1,0 +1,5 @@
+tools:
+  - name: health_ping
+    description: Ping the app root with a custom tool.
+    method: GET
+    path: /
