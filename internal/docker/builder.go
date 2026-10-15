@@ -2,7 +2,9 @@ package docker
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 	"testbox/pkg/models"
 )
 
@@ -23,11 +25,23 @@ func BuildArgsForTest(config models.DockerConfig) []string {
 	return args
 }
 
+// Defaults BuildKit on for builds.
+// Respects parent env when set.
+func buildEnv(parent []string) []string {
+	for _, e := range parent {
+		if strings.HasPrefix(e, "DOCKER_BUILDKIT=") {
+			return parent
+		}
+	}
+	return append(parent, "DOCKER_BUILDKIT=1")
+}
+
 // Runs docker build for the config.
 func (b *Builder) Build(config models.DockerConfig) error {
 	args := BuildArgsForTest(config)
 
 	cmd := exec.Command("docker", args...)
+	cmd.Env = buildEnv(os.Environ())
 
 	// Run in the context directory.
 	cmd.Dir = config.Context

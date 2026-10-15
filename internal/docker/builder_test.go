@@ -33,3 +33,24 @@ func TestBuildArgsWithBuildArgsAndTarget(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestBuildEnvDefaultsBuildKit(t *testing.T) {
+	got := buildEnv([]string{"A=1"})
+	found := false
+	for _, e := range got {
+		if e == "DOCKER_BUILDKIT=1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missing default: %v", got)
+	}
+}
+
+func TestBuildEnvRespectsParent(t *testing.T) {
+	in := []string{"DOCKER_BUILDKIT=0"}
+	got := buildEnv(in)
+	if len(got) != 1 || got[0] != "DOCKER_BUILDKIT=0" {
+		t.Errorf("must keep parent: %v", got)
+	}
+}
