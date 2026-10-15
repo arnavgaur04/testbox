@@ -87,7 +87,7 @@ func (e *Engine) Up(repoPath string) error {
 }
 
 // Stops services via compose.
-func (e *Engine) Down(repoPath string) error {
+func (e *Engine) Down(repoPath string, volumes bool) error {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return err
@@ -96,7 +96,15 @@ func (e *Engine) Down(repoPath string) error {
 	if err != nil {
 		return err
 	}
-	return deployer.Down(repoPath, composeFile)
+	return deployer.Down(repoPath, composeFile, volumes)
+}
+
+// Fresh state. Down with volumes, up.
+func (e *Engine) Reset(repoPath string) error {
+	if err := e.Down(repoPath, true); err != nil {
+		return err
+	}
+	return e.Up(repoPath)
 }
 
 // Returns compose ps output.

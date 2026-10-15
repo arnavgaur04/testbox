@@ -65,6 +65,27 @@ func TestStatusMissingRepoParam(t *testing.T) {
 	}
 }
 
+func TestResetBadRepo(t *testing.T) {
+	s := NewServer()
+	body := `{"repo":"/no/such/dir"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/reset", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for bad repo, got %d", rec.Code)
+	}
+}
+
+func TestDownVolumesFlag(t *testing.T) {
+	s := NewServer()
+	body := `{"repo":"/no/such/dir","volumes":true}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/down", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for bad repo, got %d", rec.Code)
+	}
+}
 func TestStatusBadRepo(t *testing.T) {
 	s := NewServer()
 	req := httptest.NewRequest(http.MethodGet, "/v1/status?repo=/no/such/dir", nil)

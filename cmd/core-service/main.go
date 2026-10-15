@@ -13,7 +13,8 @@ func usage() {
 	fmt.Println("Commands:")
 	fmt.Println("  build   Parse make.yaml and build the Docker image.")
 	fmt.Println("  up      Prepare compose file and start services.")
-	fmt.Println("  down    Stop services.")
+	fmt.Println("  down [-v]  Stop services. -v wipes volumes.")
+	fmt.Println("  reset   Fresh state. Down -v, then up.")
 	fmt.Println("  status  Show compose ps output.")
 	fmt.Println("  logs [service]  Show compose logs. Optional service name.")
 	fmt.Println("  run     Build then up. Default when no command is given.")
@@ -36,9 +37,21 @@ func main() {
 		cmd = rest[0]
 	}
 	// Optional service name for logs.
+	// Optional -v flag for down.
 	service := ""
+	volumes := false
+	extra := []string{}
 	if len(rest) > 1 {
-		service = rest[1]
+		extra = rest[1:]
+	}
+	for _, a := range extra {
+		if a == "-v" || a == "--volumes" {
+			volumes = true
+			continue
+		}
+		if service == "" {
+			service = a
+		}
 	}
 
 	eng := engine.NewEngine()
@@ -51,7 +64,9 @@ func main() {
 	case "up":
 		err = eng.Up(*repoPath)
 	case "down":
-		err = eng.Down(*repoPath)
+		err = eng.Down(*repoPath, volumes)
+	case "reset":
+		err = eng.Reset(*repoPath)
 	case "status":
 		var out string
 		out, err = eng.Status(*repoPath)
