@@ -1,11 +1,14 @@
 package models
 
+import "strings"
+
 type MakeYaml struct {
 	App         AppConfig         `yaml:"app"`
 	Docker      DockerConfig      `yaml:"docker"`
 	LocalDeploy LocalDeployConfig `yaml:"local_deploy"`
-	Helm        *HelmConfig       `yaml:"helm,omitempty"` // omitempty if Helm is optional
-	Mcp         *McpConfig        `yaml:"mcp,omitempty"`  // omitempty: no MCP server unless user opts in
+	Helm        *HelmConfig       `yaml:"helm,omitempty"`  // omitempty if Helm is optional
+	Mcp         *McpConfig        `yaml:"mcp,omitempty"`   // omitempty: no MCP server unless user opts in
+	Tests       []TestSuite       `yaml:"tests,omitempty"` // omitempty: no test run unless defined
 }
 
 type AppConfig struct {
@@ -31,6 +34,21 @@ type LocalServiceConfig struct {
 	ServiceName   string `yaml:"service_name"`
 	Port          int    `yaml:"port"`
 	ContainerPort int    `yaml:"container_port,omitempty"`
+}
+
+// TestSuite runs one test command.
+// Copy moves files in first.
+type TestSuite struct {
+	Name    string   `yaml:"name"`
+	Service string   `yaml:"service"`
+	Command string   `yaml:"command"`
+	Copy    []string `yaml:"copy,omitempty"`
+}
+
+// SplitCopyPair splits src:dst pairs.
+// Used by tests.copy entries.
+func SplitCopyPair(s string) []string {
+	return strings.SplitN(s, ":", 2)
 }
 
 type HelmConfig struct {

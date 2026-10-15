@@ -198,6 +198,70 @@ func TestMcpAbsentIsNil(t *testing.T) {
 	}
 }
 
+func testsYaml(extra string) string {
+	return `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+` + extra
+}
+
+func TestTestsValid(t *testing.T) {
+	y := testsYaml(`tests:
+  - name: unit
+    service: a
+    command: pytest -q
+    copy:
+      - ./tests:/app/tests
+`)
+	p := writeTempYaml(t, y)
+	cfg, err := ParseMakeYaml(p)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(cfg.Tests) != 1 || cfg.Tests[0].Name != "unit" {
+		t.Errorf("wrong tests: %+v", cfg.Tests)
+	}
+}
+
+func TestTestsMissingCommand(t *testing.T) {
+	y := testsYaml(`tests:
+  - name: unit
+    service: a
+`)
+	if _, err := ParseMakeYaml(writeTempYaml(t, y)); err == nil {
+		t.Error("expected error for missing command")
+	}
+}
+
+func TestTestsUnknownService(t *testing.T) {
+	y := testsYaml(`tests:
+  - name: unit
+    service: ghost
+    command: pytest -q
+`)
+	if _, err := ParseMakeYaml(writeTempYaml(t, y)); err == nil {
+		t.Error("expected error for unknown service")
+	}
+}
+
+func TestTestsBadCopy(t *testing.T) {
+	for _, cp := range []string{"justpath", ":/dst", "src:"} {
+		y := testsYaml("tests:\n  - name: unit\n    service: a\n    command: pytest -q\n    copy:\n      - " + cp + "\n")
+		if _, err := ParseMakeYaml(writeTempYaml(t, y)); err == nil {
+			t.Errorf("expected error for copy %q", cp)
+		}
+	}
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

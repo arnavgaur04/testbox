@@ -141,6 +141,43 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 	return deployer.Logs(repoPath, files, service, tail)
 }
 
+// Runs test suites. Up first.
+// Runs all suites. Errors at end.
+func (e *Engine) Test(repoPath string) ([]deployer.SuiteResult, error) {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(config.Tests) == 0 {
+		fmt.Println("no tests defined in make.yaml")
+		return nil, nil
+	}
+	files, err := e.resolveComposeFiles(repoPath, config)
+	if err != nil {
+		return nil, err
+	}
+	if err := deployer.Up(repoPath, files); err != nil {
+		return nil, err
+	}
+	results := []deployer.SuiteResult{}
+	failed := 0
+	for _, suite := range config.Tests {
+		res, err := deployer.RunSuite(repoPath, files, suite)
+		results = append(results, res)
+		if err != nil {
+			failed++
+			fmt.Printf("FAIL %s\n", suite.Name)
+			continue
+		}
+		fmt.Printf("PASS %s\n", suite.Name)
+	}
+	fmt.Printf("%d passed, %d failed\n", len(results)-failed, failed)
+	if failed > 0 {
+		return results, fmt.Errorf("%d suites failed", failed)
+	}
+	return results, nil
+}
+
 // Build then Up in one step.
 func (e *Engine) Run(repoPath string) error {
 	if err := e.Build(repoPath); err != nil {

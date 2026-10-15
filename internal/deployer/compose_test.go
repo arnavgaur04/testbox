@@ -169,3 +169,17 @@ func TestFileFlags(t *testing.T) {
 		t.Errorf("got %v want %v", got, want)
 	}
 }
+
+func TestRunSuiteBadCopy(t *testing.T) {
+	suite := models.TestSuite{Name: "s", Service: "a", Command: "true", Copy: []string{"nodst"}}
+	if _, err := RunSuite(t.TempDir(), []string{}, suite); err == nil {
+		t.Error("expected error for bad copy")
+	}
+}
+
+func TestRunSuiteMissingFile(t *testing.T) {
+	suite := models.TestSuite{Name: "s", Service: "a", Command: "true"}
+	if _, err := RunSuite(t.TempDir(), []string{"/no/such.yaml"}, suite); err == nil {
+		t.Error("expected error for missing file")
+	}
+}
