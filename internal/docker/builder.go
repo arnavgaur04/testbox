@@ -1,7 +1,9 @@
 package docker
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -48,9 +50,12 @@ func (b *Builder) Build(config models.DockerConfig) error {
 
 	fmt.Printf("Running: docker %v in %s\n", args, cmd.Dir)
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("docker build failed: %w\nOutput: %s", err, string(output))
+	// Stream live. Keep copy for errors.
+	var buf bytes.Buffer
+	cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &buf)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker build failed: %w\nOutput: %s", err, buf.String())
 	}
 
 	return nil
