@@ -94,7 +94,33 @@ func (s *Server) handleUp(w http.ResponseWriter, r *http.Request) {
 }
 
 // Runs Engine.Down.
+// Body may set volumes true.
 func (s *Server) handleDown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	var req struct {
+		Repo    string `json:"repo"`
+		Volumes bool   `json:"volumes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.Repo == "" {
+		writeErr(w, http.StatusBadRequest, "field repo is required")
+		return
+	}
+	if err := s.eng.Down(req.Repo, req.Volumes); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeOK(w, "down completed")
+}
+
+// Runs Engine.Reset. Fresh state.
+func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
 		return
@@ -103,11 +129,11 @@ func (s *Server) handleDown(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := s.eng.Down(repo); err != nil {
+	if err := s.eng.Reset(repo); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeOK(w, "down completed")
+	writeOK(w, "reset completed")
 }
 
 // Runs Build then Up.
@@ -189,6 +215,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/build", s.handleBuild)
 	mux.HandleFunc("/v1/up", s.handleUp)
 	mux.HandleFunc("/v1/down", s.handleDown)
+	mux.HandleFunc("/v1/reset", s.handleReset)
 	mux.HandleFunc("/v1/run", s.handleRun)
 	mux.HandleFunc("/v1/status", s.handleStatus)
 	mux.HandleFunc("/v1/logs", s.handleLogs)

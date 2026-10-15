@@ -137,12 +137,17 @@ func Up(repoPath string, composeFilePath string) error {
 	return nil
 }
 
-// Stops compose services.
-func Down(repoPath string, composeFilePath string) error {
+// Stops services. Volumes go too.
+// volumes=true wipes named volumes.
+func Down(repoPath string, composeFilePath string, volumes bool) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
 	}
-	output, err := composeStream(repoPath, composeFilePath, "down")
+	args := []string{"down"}
+	if volumes {
+		args = append(args, "-v")
+	}
+	output, err := composeStream(repoPath, composeFilePath, args...)
 	if err != nil {
 		return fmt.Errorf("compose down failed: %w\nOutput: %s", err, output)
 	}

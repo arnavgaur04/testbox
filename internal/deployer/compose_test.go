@@ -56,8 +56,11 @@ func TestUpMissingFile(t *testing.T) {
 }
 
 func TestDownMissingFile(t *testing.T) {
-	if err := Down(t.TempDir(), "/no/such/compose.yaml"); err == nil {
+	if err := Down(t.TempDir(), "/no/such/compose.yaml", false); err == nil {
 		t.Error("expected error for missing compose file")
+	}
+	if err := Down(t.TempDir(), "/no/such/compose.yaml", true); err == nil {
+		t.Error("expected error with volumes too")
 	}
 }
 
