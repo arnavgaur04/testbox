@@ -1,7 +1,9 @@
 package deployer
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 )
@@ -26,6 +28,32 @@ func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (s
 		return "", fmt.Errorf("compose %v failed (v2: %s): %w\nOutput: %s", opArgs, v1Err, err, string(output))
 	}
 	return string(output), nil
+}
+
+// Streams a compose command live.
+// Full output returned for errors.
+func composeStream(repoPath string, composeFilePath string, opArgs ...string) (string, error) {
+	run := func(prog string, args []string) (string, error) {
+		var buf bytes.Buffer
+		cmd := exec.Command(prog, args...)
+		cmd.Dir = repoPath
+		cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &buf)
+		err := cmd.Run()
+		return buf.String(), err
+	}
+	v2Args := append([]string{"compose", "-f", composeFilePath}, opArgs...)
+	out, err := run("docker", v2Args)
+	if err == nil {
+		return out, nil
+	}
+	v1Err := out
+	v1Args := append([]string{"-f", composeFilePath}, opArgs...)
+	out, err = run("docker-compose", v1Args)
+	if err != nil {
+		return "", fmt.Errorf("compose %v failed (v2: %s): %w\nOutput: %s", opArgs, v1Err, err, out)
+	}
+	return out, nil
 }
 
 // Returns 'compose ps' output.

@@ -129,7 +129,7 @@ func Up(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
 	}
-	output, err := composeOutput(repoPath, composeFilePath, "up", "-d")
+	output, err := composeStream(repoPath, composeFilePath, "up", "-d")
 	if err != nil {
 		return fmt.Errorf("compose up failed: %w\nOutput: %s", err, output)
 	}
@@ -142,7 +142,7 @@ func Down(repoPath string, composeFilePath string) error {
 	if _, err := os.Stat(composeFilePath); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFilePath)
 	}
-	output, err := composeOutput(repoPath, composeFilePath, "down")
+	output, err := composeStream(repoPath, composeFilePath, "down")
 	if err != nil {
 		return fmt.Errorf("compose down failed: %w\nOutput: %s", err, output)
 	}
