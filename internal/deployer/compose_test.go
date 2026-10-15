@@ -38,28 +38,28 @@ func TestGenerateComposeFile(t *testing.T) {
 }
 
 func TestStatusMissingFile(t *testing.T) {
-	if _, err := Status(t.TempDir(), "/no/such/compose.yaml"); err == nil {
+	if _, err := Status(t.TempDir(), []string{"/no/such/compose.yaml"}); err == nil {
 		t.Error("expected error for missing compose file")
 	}
 }
 
 func TestLogsMissingFile(t *testing.T) {
-	if _, err := Logs(t.TempDir(), "/no/such/compose.yaml", "", "10"); err == nil {
+	if _, err := Logs(t.TempDir(), []string{"/no/such/compose.yaml"}, "", "10"); err == nil {
 		t.Error("expected error for missing compose file")
 	}
 }
 
 func TestUpMissingFile(t *testing.T) {
-	if err := Up(t.TempDir(), "/no/such/compose.yaml"); err == nil {
+	if err := Up(t.TempDir(), []string{"/no/such/compose.yaml"}); err == nil {
 		t.Error("expected error for missing compose file")
 	}
 }
 
 func TestDownMissingFile(t *testing.T) {
-	if err := Down(t.TempDir(), "/no/such/compose.yaml", false); err == nil {
+	if err := Down(t.TempDir(), []string{"/no/such/compose.yaml"}, false); err == nil {
 		t.Error("expected error for missing compose file")
 	}
-	if err := Down(t.TempDir(), "/no/such/compose.yaml", true); err == nil {
+	if err := Down(t.TempDir(), []string{"/no/such/compose.yaml"}, true); err == nil {
 		t.Error("expected error with volumes too")
 	}
 }
@@ -124,5 +124,48 @@ func TestGenerateComposeMcpImageOverride(t *testing.T) {
 	}
 	if strings.Contains(content, "build:") {
 		t.Errorf("image override must not set build:\n%s", content)
+	}
+}
+
+func TestWriteMcpOverride(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "openapi.yaml"), []byte("openapi: 3.0.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := WriteMcpOverride(dir, mcpTestConfig(), "v1")
+	if err != nil {
+		t.Fatalf("override failed: %v", err)
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	content := string(data)
+	for _, want := range []string{"mcp:", "http://my-test-app:80", `"18082:8082"`, "TESTBOX_REF: v1"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("expected %q:\n%s", want, content)
+		}
+	}
+	if strings.Contains(content, "my-test-app:\n    image") {
+		t.Errorf("override must not repeat app:\n%s", content)
+	}
+}
+
+func TestStatusMissingSecondFile(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "a.yaml")
+	if err := os.WriteFile(good, []byte("services: {}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Status(dir, []string{good, "/no/such.yaml"}); err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
+func TestFileFlags(t *testing.T) {
+	got := fileFlags([]string{"a.yaml", "b.yaml"}, []string{"ps"})
+	want := []string{"-f", "a.yaml", "-f", "b.yaml", "ps"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("got %v want %v", got, want)
 	}
 }

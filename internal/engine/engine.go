@@ -38,24 +38,32 @@ func (e *Engine) ensureTestboxDir(repoPath string) (string, error) {
 	return testboxDir, nil
 }
 
-// Picks generated or user compose.
-// Generates when auto is true.
-func (e *Engine) resolveComposeFile(repoPath string, config *models.MakeYaml) (string, error) {
+// Picks compose files to use.
+// Custom plus mcp adds override.
+func (e *Engine) resolveComposeFiles(repoPath string, config *models.MakeYaml) ([]string, error) {
 	testboxDir, err := e.ensureTestboxDir(repoPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if config.LocalDeploy.AutoGenerateCompose {
 		if err := deployer.GenerateComposeFile(repoPath, config, e.McpRef); err != nil {
-			return "", err
+			return nil, err
 		}
-		return filepath.Join(testboxDir, "docker-compose.local.yaml"), nil
+		return []string{filepath.Join(testboxDir, "docker-compose.local.yaml")}, nil
 	}
 	p := config.LocalDeploy.ComposeFile
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(repoPath, p)
 	}
-	return p, nil
+	files := []string{p}
+	if config.Mcp != nil && config.Mcp.Enabled {
+		override, err := deployer.WriteMcpOverride(repoPath, config, e.McpRef)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, override)
+	}
+	return files, nil
 }
 
 // Builds the image from config.
@@ -79,11 +87,11 @@ func (e *Engine) Up(repoPath string) error {
 	if err != nil {
 		return err
 	}
-	composeFile, err := e.resolveComposeFile(repoPath, config)
+	files, err := e.resolveComposeFiles(repoPath, config)
 	if err != nil {
 		return err
 	}
-	return deployer.Up(repoPath, composeFile)
+	return deployer.Up(repoPath, files)
 }
 
 // Stops services via compose.
@@ -92,11 +100,11 @@ func (e *Engine) Down(repoPath string, volumes bool) error {
 	if err != nil {
 		return err
 	}
-	composeFile, err := e.resolveComposeFile(repoPath, config)
+	files, err := e.resolveComposeFiles(repoPath, config)
 	if err != nil {
 		return err
 	}
-	return deployer.Down(repoPath, composeFile, volumes)
+	return deployer.Down(repoPath, files, volumes)
 }
 
 // Fresh state. Down with volumes, up.
@@ -113,11 +121,11 @@ func (e *Engine) Status(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	composeFile, err := e.resolveComposeFile(repoPath, config)
+	files, err := e.resolveComposeFiles(repoPath, config)
 	if err != nil {
 		return "", err
 	}
-	return deployer.Status(repoPath, composeFile)
+	return deployer.Status(repoPath, files)
 }
 
 // Returns compose logs output.
@@ -126,11 +134,11 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 	if err != nil {
 		return "", err
 	}
-	composeFile, err := e.resolveComposeFile(repoPath, config)
+	files, err := e.resolveComposeFiles(repoPath, config)
 	if err != nil {
 		return "", err
 	}
-	return deployer.Logs(repoPath, composeFile, service, tail)
+	return deployer.Logs(repoPath, files, service, tail)
 }
 
 // Build then Up in one step.
@@ -143,11 +151,11 @@ func (e *Engine) Run(repoPath string) error {
 	if err != nil {
 		return err
 	}
-	composeFile, err := e.resolveComposeFile(repoPath, config)
+	files, err := e.resolveComposeFiles(repoPath, config)
 	if err != nil {
 		return err
 	}
-	if err := deployer.Up(repoPath, composeFile); err != nil {
+	if err := deployer.Up(repoPath, files); err != nil {
 		return err
 	}
 	fmt.Println("Deployment configuration ready.")
