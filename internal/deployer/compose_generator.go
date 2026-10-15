@@ -123,13 +123,79 @@ func mcpServiceInfo(repoPath string, config *models.MakeYaml) (*testmcp.ServiceI
 	return testmcp.WriteBuildContext(repoPath, config.Mcp.OpenAPI, config.Mcp.ToolsFile, target, config.Mcp.Port, config.Mcp.Image, dependsOn)
 }
 
+// Override adds only the mcp block.
+// Merged over the user compose file.
+const McpOverrideTemplate = `services:
+  mcp:
+{{- if .Mcp.Image }}
+    image: {{ .Mcp.Image }}
+{{- else }}
+    build:
+      context: {{ .Mcp.BuildContext }}
+      args:
+        TESTBOX_REF: {{ .McpRef }}
+{{- end }}
+    command:
+{{- range .Mcp.Command }}
+      - "{{ . }}"
+{{- end }}
+    ports:
+      - "{{ .Mcp.HostPort }}:{{ .Mcp.ContainerPort }}"
+{{- if .Mcp.DependsOn }}
+    depends_on:
+{{- range .Mcp.DependsOn }}
+      - {{ . }}
+{{- end }}
+{{- end }}
+{{- if and .Mcp.Image (or .Mcp.HasOpenAPI .Mcp.HasTools) }}
+    volumes:
+{{- if .Mcp.HasOpenAPI }}
+      - "{{ .Mcp.StageDir }}/openapi.yaml:/mcp/openapi.yaml:ro"
+{{- end }}
+{{- if .Mcp.HasTools }}
+      - "{{ .Mcp.StageDir }}/tools.yaml:/mcp/tools.yaml:ro"
+{{- end }}
+{{- end }}
+`
+
+// Writes the mcp override compose file.
+// Used when user compose file is custom.
+func WriteMcpOverride(repoPath string, config *models.MakeYaml, mcpRef string) (string, error) {
+	info, err := mcpServiceInfo(repoPath, config)
+	if err != nil {
+		return "", err
+	}
+	if info == nil {
+		return "", fmt.Errorf("mcp is not enabled")
+	}
+	testboxDir := filepath.Join(repoPath, ".testbox")
+	if err := os.MkdirAll(testboxDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create .testbox directory: %w", err)
+	}
+	out := filepath.Join(testboxDir, "docker-compose.mcp.yaml")
+	file, err := os.Create(out)
+	if err != nil {
+		return "", fmt.Errorf("failed to create override file: %w", err)
+	}
+	defer file.Close()
+	data := struct {
+		Mcp    *testmcp.ServiceInfo
+		McpRef string
+	}{Mcp: info, McpRef: mcpRef}
+	tmpl, err := template.New("mcpoverride").Parse(McpOverrideTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template: %w", err)
+	}
+	if err := tmpl.Execute(file, data); err != nil {
+		return "", fmt.Errorf("failed to execute template: %w", err)
+	}
+	return out, nil
+}
+
 // Runs compose up -d.
 // Tries v2 first, then v1.
-func Up(repoPath string, composeFilePath string) error {
-	if _, err := os.Stat(composeFilePath); err != nil {
-		return fmt.Errorf("compose file not found: %s", composeFilePath)
-	}
-	output, err := composeStream(repoPath, composeFilePath, "up", "-d")
+func Up(repoPath string, files []string) error {
+	output, err := composeStream(repoPath, files, "up", "-d")
 	if err != nil {
 		return fmt.Errorf("compose up failed: %w\nOutput: %s", err, output)
 	}
@@ -139,15 +205,12 @@ func Up(repoPath string, composeFilePath string) error {
 
 // Stops services. Volumes go too.
 // volumes=true wipes named volumes.
-func Down(repoPath string, composeFilePath string, volumes bool) error {
-	if _, err := os.Stat(composeFilePath); err != nil {
-		return fmt.Errorf("compose file not found: %s", composeFilePath)
-	}
+func Down(repoPath string, files []string, volumes bool) error {
 	args := []string{"down"}
 	if volumes {
 		args = append(args, "-v")
 	}
-	output, err := composeStream(repoPath, composeFilePath, args...)
+	output, err := composeStream(repoPath, files, args...)
 	if err != nil {
 		return fmt.Errorf("compose down failed: %w\nOutput: %s", err, output)
 	}

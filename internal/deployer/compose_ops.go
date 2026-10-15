@@ -8,10 +8,14 @@ import (
 	"os/exec"
 )
 
-// Runs a compose command.
+// Runs compose command. Merges -f.
 // Tries v2 first, then v1.
-func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (string, error) {
-	v2Args := append([]string{"compose", "-f", composeFilePath}, opArgs...)
+func composeOutput(repoPath string, files []string, opArgs ...string) (string, error) {
+	if err := checkFiles(files); err != nil {
+		return "", err
+	}
+	flagArgs := fileFlags(files, opArgs)
+	v2Args := append([]string{"compose"}, flagArgs...)
 	cmd := exec.Command("docker", v2Args...)
 	cmd.Dir = repoPath
 	output, err := cmd.CombinedOutput()
@@ -20,7 +24,7 @@ func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (s
 	}
 	v1Err := string(output)
 
-	v1Args := append([]string{"-f", composeFilePath}, opArgs...)
+	v1Args := fileFlags(files, opArgs)
 	cmd = exec.Command("docker-compose", v1Args...)
 	cmd.Dir = repoPath
 	output, err = cmd.CombinedOutput()
@@ -32,7 +36,10 @@ func composeOutput(repoPath string, composeFilePath string, opArgs ...string) (s
 
 // Streams a compose command live.
 // Full output returned for errors.
-func composeStream(repoPath string, composeFilePath string, opArgs ...string) (string, error) {
+func composeStream(repoPath string, files []string, opArgs ...string) (string, error) {
+	if err := checkFiles(files); err != nil {
+		return "", err
+	}
 	run := func(prog string, args []string) (string, error) {
 		var buf bytes.Buffer
 		cmd := exec.Command(prog, args...)
@@ -42,14 +49,14 @@ func composeStream(repoPath string, composeFilePath string, opArgs ...string) (s
 		err := cmd.Run()
 		return buf.String(), err
 	}
-	v2Args := append([]string{"compose", "-f", composeFilePath}, opArgs...)
+	flagArgs := fileFlags(files, opArgs)
+	v2Args := append([]string{"compose"}, flagArgs...)
 	out, err := run("docker", v2Args)
 	if err == nil {
 		return out, nil
 	}
 	v1Err := out
-	v1Args := append([]string{"-f", composeFilePath}, opArgs...)
-	out, err = run("docker-compose", v1Args)
+	out, err = run("docker-compose", flagArgs)
 	if err != nil {
 		return "", fmt.Errorf("compose %v failed (v2: %s): %w\nOutput: %s", opArgs, v1Err, err, out)
 	}
@@ -57,19 +64,13 @@ func composeStream(repoPath string, composeFilePath string, opArgs ...string) (s
 }
 
 // Returns 'compose ps' output.
-func Status(repoPath string, composeFilePath string) (string, error) {
-	if _, err := os.Stat(composeFilePath); err != nil {
-		return "", fmt.Errorf("compose file not found: %s", composeFilePath)
-	}
-	return composeOutput(repoPath, composeFilePath, "ps")
+func Status(repoPath string, files []string) (string, error) {
+	return composeOutput(repoPath, files, "ps")
 }
 
 // Returns 'compose logs' output.
 // Empty service means all.
-func Logs(repoPath string, composeFilePath string, service string, tail string) (string, error) {
-	if _, err := os.Stat(composeFilePath); err != nil {
-		return "", fmt.Errorf("compose file not found: %s", composeFilePath)
-	}
+func Logs(repoPath string, files []string, service string, tail string) (string, error) {
 	if tail == "" {
 		tail = "100"
 	}
@@ -77,5 +78,28 @@ func Logs(repoPath string, composeFilePath string, service string, tail string) 
 	if service != "" {
 		args = append(args, service)
 	}
-	return composeOutput(repoPath, composeFilePath, args...)
+	return composeOutput(repoPath, files, args...)
+}
+
+// Missing file fails before Docker.
+// Saves a confusing daemon error.
+func checkFiles(files []string) error {
+	if len(files) == 0 {
+		return fmt.Errorf("no compose file given")
+	}
+	for _, f := range files {
+		if _, err := os.Stat(f); err != nil {
+			return fmt.Errorf("compose file not found: %s", f)
+		}
+	}
+	return nil
+}
+
+// Builds -f flags for each file.
+func fileFlags(files []string, opArgs []string) []string {
+	args := []string{}
+	for _, f := range files {
+		args = append(args, "-f", f)
+	}
+	return append(args, opArgs...)
 }
