@@ -136,6 +136,34 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 	writeOK(w, "reset completed")
 }
 
+// Runs Engine.Test. Returns results.
+func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	repo, ok := s.decodeRepo(w, r)
+	if !ok {
+		return
+	}
+	results, err := s.eng.Test(repo)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	type item struct {
+		Name   string `json:"name"`
+		Passed bool   `json:"passed"`
+		Output string `json:"output"`
+	}
+	items := []item{}
+	for _, res := range results {
+		items = append(items, item{Name: res.Name, Passed: res.Passed, Output: res.Output})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "results": items})
+}
+
 // Runs Build then Up.
 func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -216,6 +244,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/up", s.handleUp)
 	mux.HandleFunc("/v1/down", s.handleDown)
 	mux.HandleFunc("/v1/reset", s.handleReset)
+	mux.HandleFunc("/v1/test", s.handleTest)
 	mux.HandleFunc("/v1/run", s.handleRun)
 	mux.HandleFunc("/v1/status", s.handleStatus)
 	mux.HandleFunc("/v1/logs", s.handleLogs)

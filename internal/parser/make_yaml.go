@@ -88,5 +88,31 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 	}
 
+	// Test suite checks.
+	known := map[string]bool{}
+	for _, s := range config.LocalDeploy.Services {
+		known[s.ServiceName] = true
+	}
+	for _, t := range config.Tests {
+		if t.Name == "" {
+			return fmt.Errorf("tests.name is required")
+		}
+		if t.Service == "" {
+			return fmt.Errorf("tests.service is required for %s", t.Name)
+		}
+		if !known[t.Service] {
+			return fmt.Errorf("tests.service %s unknown for %s", t.Service, t.Name)
+		}
+		if t.Command == "" {
+			return fmt.Errorf("tests.command is required for %s", t.Name)
+		}
+		for _, c := range t.Copy {
+			parts := models.SplitCopyPair(c)
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				return fmt.Errorf("tests.copy must be src:dst for %s", t.Name)
+			}
+		}
+	}
+
 	return nil
 }

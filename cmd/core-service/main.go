@@ -18,6 +18,7 @@ func usage() {
 	fmt.Println("  status  Show compose ps output.")
 	fmt.Println("  logs [service]  Show compose logs. Optional service name.")
 	fmt.Println("  run     Build then up. Default when no command is given.")
+	fmt.Println("  test    Up, then run tests: suites.")
 	fmt.Println("")
 	fmt.Println("Flags:")
 	flag.PrintDefaults()
@@ -81,6 +82,8 @@ func main() {
 		}
 	case "run":
 		err = eng.Run(*repoPath)
+	case "test":
+		_, err = eng.Test(*repoPath)
 	case "help", "-h", "--help":
 		usage()
 		return
