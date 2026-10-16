@@ -87,6 +87,9 @@ lives in `make.yaml` at the repo root.
 
 - CI must pass before merge.
 - Always squash and merge.
+- Server enforces squash only.
+- Owner merges own PRs via bypass.
+- Others need owner approval first.
 - One feature per PR with proof:
   what ran, what output, what curl.
 
