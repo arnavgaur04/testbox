@@ -161,7 +161,7 @@ func TestExecGET(t *testing.T) {
 			{Name: "verbose", In: "query", Required: false},
 		},
 	}
-	out, err := ExecGET(context.Background(), srv.URL, def, map[string]any{"id": "42", "verbose": "true"})
+	out, err := ExecGET(context.Background(), srv.URL, def, map[string]any{"id": "42", "verbose": "true"}, nil)
 	if err != nil {
 		t.Fatalf("exec: %v", err)
 	}
@@ -181,7 +181,48 @@ func TestExecGETMissingPathParam(t *testing.T) {
 		Name: "getuser", Method: "GET", Path: "/users/{id}",
 		Params: []ParamDef{{Name: "id", In: "path", Required: true}},
 	}
-	if _, err := ExecGET(context.Background(), "http://x", def, map[string]any{}); err == nil {
+	if _, err := ExecGET(context.Background(), "http://x", def, map[string]any{}, nil); err == nil {
 		t.Error("expected error for missing path param")
+	}
+}
+
+func TestExecGETSendsHeaders(t *testing.T) {
+	var gotAuth, gotKey string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotKey = r.Header.Get("X-Api-Key")
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+	defer srv.Close()
+
+	def := ToolDef{Name: "ping", Method: "GET", Path: "/ping"}
+	headers := map[string]string{
+		"Authorization": "Bearer tok",
+		"X-Api-Key":     "k1",
+	}
+	if _, err := ExecGET(context.Background(), srv.URL, def, nil, headers); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if gotAuth != "Bearer tok" {
+		t.Errorf("wrong Authorization: %q", gotAuth)
+	}
+	if gotKey != "k1" {
+		t.Errorf("wrong X-Api-Key: %q", gotKey)
+	}
+}
+
+func TestExecGETNoHeaders(t *testing.T) {
+	var auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		fmt.Fprint(w, "ok")
+	}))
+	defer srv.Close()
+	def := ToolDef{Name: "ping", Method: "GET", Path: "/ping"}
+	if _, err := ExecGET(context.Background(), srv.URL, def, nil, nil); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if auth != "" {
+		t.Errorf("expected no auth header, got %q", auth)
 	}
 }

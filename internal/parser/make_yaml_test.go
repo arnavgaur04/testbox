@@ -280,3 +280,57 @@ func itoa(n int) string {
 	}
 	return string(buf)
 }
+
+func TestMcpHeadersParsed(t *testing.T) {
+	y := `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+mcp:
+  enabled: true
+  openapi: ./openapi.yaml
+  headers:
+    Authorization: "Bearer ${TOKEN}"
+`
+	cfg, err := ParseMakeYaml(writeTempYaml(t, y))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Mcp.Headers["Authorization"] != "Bearer ${TOKEN}" {
+		t.Errorf("wrong headers: %+v", cfg.Mcp.Headers)
+	}
+}
+
+func TestMcpHeaderBadName(t *testing.T) {
+	for _, name := range []string{`""`, `"Bad Name"`, `"X:Y"`} {
+		y := `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+mcp:
+  enabled: true
+  openapi: ./openapi.yaml
+  headers:
+    ` + name + `: "v"
+`
+		if _, err := ParseMakeYaml(writeTempYaml(t, y)); err == nil {
+			t.Errorf("expected error for header name %s", name)
+		}
+	}
+}

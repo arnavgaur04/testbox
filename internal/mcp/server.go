@@ -19,7 +19,7 @@ const maxBody = 8000
 
 // Registers one tool per def.
 // All tools run HTTP GET.
-func BuildServer(name string, defs []ToolDef, targetBase string) *server.MCPServer {
+func BuildServer(name string, defs []ToolDef, targetBase string, headers map[string]string) *server.MCPServer {
 	s := server.NewMCPServer(name, "0.1.0")
 	for _, def := range defs {
 		def := def
@@ -28,7 +28,7 @@ func BuildServer(name string, defs []ToolDef, targetBase string) *server.MCPServ
 			opts = append(opts, paramOption(p))
 		}
 		s.AddTool(mcplib.NewTool(def.Name, opts...), func(ctx context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
-			out, err := runGET(ctx, targetBase, def, req)
+			out, err := runGET(ctx, targetBase, def, req, headers)
 			if err != nil {
 				return mcplib.NewToolResultError(err.Error()), nil
 			}
@@ -61,12 +61,12 @@ func paramOption(p ParamDef) mcplib.ToolOption {
 }
 
 // Builds URL and runs GET.
-func runGET(ctx context.Context, base string, def ToolDef, req mcplib.CallToolRequest) (string, error) {
-	return ExecGET(ctx, base, def, req.GetArguments())
+func runGET(ctx context.Context, base string, def ToolDef, req mcplib.CallToolRequest, headers map[string]string) (string, error) {
+	return ExecGET(ctx, base, def, req.GetArguments(), headers)
 }
 
 // Testable core of runGET.
-func ExecGET(ctx context.Context, base string, def ToolDef, args map[string]any) (string, error) {
+func ExecGET(ctx context.Context, base string, def ToolDef, args map[string]any, headers map[string]string) (string, error) {
 	path := def.Path
 	// Fill {name} path slots.
 	for _, p := range def.Params {
@@ -103,6 +103,9 @@ func ExecGET(ctx context.Context, base string, def ToolDef, args map[string]any)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, full, nil)
 	if err != nil {
 		return "", fmt.Errorf("bad request: %w", err)
+	}
+	for name, value := range headers {
+		httpReq.Header.Set(name, value)
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -13,16 +14,17 @@ const mcpHTTPPort = 8082
 // Data for the mcp compose block.
 type ServiceInfo struct {
 	Enabled       bool
-	Target        string   // base URL of the app, reachable inside compose network
-	HostPort      int      // host port for MCP HTTP
-	ContainerPort int      // container port for MCP HTTP. Always 8082.
-	Image         string   // prebuilt image. Empty means local build.
-	BuildContext  string   // absolute path of .testbox/mcp. Empty when Image is set.
-	StageDir      string   // absolute path of staged spec files. Used for volumes with Image.
-	DependsOn     []string // app service names
-	HasOpenAPI    bool     // local openapi file staged
-	HasTools      bool     // local tools file staged
-	OpenAPIRef    string   // /mcp/openapi.yaml or original URL
+	Target        string            // base URL of the app, reachable inside compose network
+	HostPort      int               // host port for MCP HTTP
+	ContainerPort int               // container port for MCP HTTP. Always 8082.
+	Image         string            // prebuilt image. Empty means local build.
+	BuildContext  string            // absolute path of .testbox/mcp. Empty when Image is set.
+	StageDir      string            // absolute path of staged spec files. Used for volumes with Image.
+	DependsOn     []string          // app service names
+	HasOpenAPI    bool              // local openapi file staged
+	HasTools      bool              // local tools file staged
+	OpenAPIRef    string            // /mcp/openapi.yaml or original URL
+	Headers       map[string]string // auth headers for tool calls
 }
 
 // Builds mcp-server from source.
@@ -54,7 +56,7 @@ func dockerfileFor(hasOpenAPI bool, hasTools bool) string {
 
 // Stages .testbox/mcp for compose.
 // Bake or mount specs. No Docker.
-func WriteBuildContext(repoPath string, openAPI string, toolsFile string, target string, hostPort int, image string, dependsOn []string) (*ServiceInfo, error) {
+func WriteBuildContext(repoPath string, openAPI string, toolsFile string, target string, hostPort int, image string, dependsOn []string, headers map[string]string) (*ServiceInfo, error) {
 	info := &ServiceInfo{
 		Enabled:       true,
 		Target:        target,
@@ -62,6 +64,7 @@ func WriteBuildContext(repoPath string, openAPI string, toolsFile string, target
 		ContainerPort: mcpHTTPPort,
 		Image:         image,
 		DependsOn:     dependsOn,
+		Headers:       headers,
 	}
 	// Absolute paths survive -repo.
 	absRepo, err := filepath.Abs(repoPath)
@@ -116,6 +119,15 @@ func (s *ServiceInfo) Command() []string {
 	}
 	if s.HasTools {
 		cmd = append(cmd, "--tools", "/mcp/tools.yaml")
+	}
+	// Sorted so output is stable.
+	names := make([]string, 0, len(s.Headers))
+	for name := range s.Headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		cmd = append(cmd, "--header", name+"="+s.Headers[name])
 	}
 	return cmd
 }

@@ -16,7 +16,7 @@ func TestWriteBuildContext(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte("tools: []\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	info, err := WriteBuildContext(dir, "./openapi.yaml", "./tools.yaml", "http://my-app:80", 18082, "", []string{"my-app"})
+	info, err := WriteBuildContext(dir, "./openapi.yaml", "./tools.yaml", "http://my-app:80", 18082, "", []string{"my-app"}, nil)
 	if err != nil {
 		t.Fatalf("write context: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestWriteBuildContext(t *testing.T) {
 
 func TestWriteBuildContextURLPassthrough(t *testing.T) {
 	dir := t.TempDir()
-	info, err := WriteBuildContext(dir, "https://x/openapi.yaml", "", "http://a:80", 8082, "", []string{"a"})
+	info, err := WriteBuildContext(dir, "https://x/openapi.yaml", "", "http://a:80", 8082, "", []string{"a"}, nil)
 	if err != nil {
 		t.Fatalf("write context: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestWriteBuildContextPrebuiltImage(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte("tools: []\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	info, err := WriteBuildContext(dir, "", "./tools.yaml", "http://a:80", 8082, "my-mcp:1", []string{"a"})
+	info, err := WriteBuildContext(dir, "", "./tools.yaml", "http://a:80", 8082, "my-mcp:1", []string{"a"}, nil)
 	if err != nil {
 		t.Fatalf("write context: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestWriteBuildContextRelativeRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(dir)
-	info, err := WriteBuildContext(".", "./openapi.yaml", "", "http://a:80", 8082, "", []string{"a"})
+	info, err := WriteBuildContext(".", "./openapi.yaml", "", "http://a:80", 8082, "", []string{"a"}, nil)
 	if err != nil {
 		t.Fatalf("write context: %v", err)
 	}
@@ -106,5 +106,22 @@ func TestWriteBuildContextRelativeRepo(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(info.BuildContext, "Dockerfile")); err != nil {
 		t.Errorf("Dockerfile must exist at absolute context: %v", err)
+	}
+}
+
+func TestCommandIncludesHeaders(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "openapi.yaml"), []byte("openapi: 3.0.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	headers := map[string]string{"X-Api-Key": "k1", "Authorization": "Bearer t"}
+	info, err := WriteBuildContext(dir, "./openapi.yaml", "", "http://a:80", 8082, "", []string{"a"}, headers)
+	if err != nil {
+		t.Fatalf("build context: %v", err)
+	}
+	joined := strings.Join(info.Command(), " ")
+	want := "--header Authorization=Bearer t --header X-Api-Key=k1"
+	if !strings.Contains(joined, want) {
+		t.Errorf("expected %q in %q", want, joined)
 	}
 }
