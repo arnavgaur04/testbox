@@ -55,6 +55,8 @@ type HelmConfig struct {
 	ChartPath   string `yaml:"chart_path"`
 	ValuesFile  string `yaml:"values_file,omitempty"`
 	ReleaseName string `yaml:"release_name"`
+	Namespace   string `yaml:"namespace,omitempty"`
+	KubeContext string `yaml:"kube_context,omitempty"`
 }
 
 // Optional per-service MCP server.

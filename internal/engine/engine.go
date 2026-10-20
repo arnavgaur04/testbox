@@ -204,6 +204,46 @@ func (e *Engine) Test(repoPath string, opts TestOptions) ([]deployer.SuiteResult
 	return results, cleanupErr
 }
 
+// Helm config or a clear error.
+// Helm is opt-in via make.yaml.
+func (e *Engine) helmConfig(repoPath string) (models.HelmConfig, error) {
+	config, err := e.LoadConfig(repoPath)
+	if err != nil {
+		return models.HelmConfig{}, err
+	}
+	if config.Helm == nil {
+		return models.HelmConfig{}, fmt.Errorf("helm section is not configured in make.yaml")
+	}
+	return *config.Helm, nil
+}
+
+// Deploys the helm release.
+func (e *Engine) HelmUp(repoPath string) error {
+	cfg, err := e.helmConfig(repoPath)
+	if err != nil {
+		return err
+	}
+	return deployer.HelmUp(repoPath, cfg)
+}
+
+// Returns helm release status.
+func (e *Engine) HelmStatus(repoPath string) (string, error) {
+	cfg, err := e.helmConfig(repoPath)
+	if err != nil {
+		return "", err
+	}
+	return deployer.HelmStatus(repoPath, cfg)
+}
+
+// Removes the helm release.
+func (e *Engine) HelmDown(repoPath string) error {
+	cfg, err := e.helmConfig(repoPath)
+	if err != nil {
+		return err
+	}
+	return deployer.HelmDown(repoPath, cfg)
+}
+
 // Build then Up in one step.
 func (e *Engine) Run(repoPath string) error {
 	if err := e.Build(repoPath); err != nil {

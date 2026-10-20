@@ -21,6 +21,8 @@ func usage() {
 	fmt.Println("  run     Build then up. Default when no command is given.")
 	fmt.Println("  test [--cleanup] [--wait 2m]")
 	fmt.Println("          Up, wait ready, run tests: suites.")
+	fmt.Println("  helm up|status|down")
+	fmt.Println("          Deploy, inspect, remove helm release.")
 	fmt.Println("")
 	fmt.Println("Flags:")
 	flag.PrintDefaults()
@@ -102,6 +104,25 @@ func main() {
 		err = eng.Run(*repoPath)
 	case "test":
 		_, err = eng.Test(*repoPath, engine.TestOptions{Wait: wait, Cleanup: cleanup, Volumes: volumes})
+	case "helm":
+		action := ""
+		if len(rest) > 1 {
+			action = rest[1]
+		}
+		switch action {
+		case "up":
+			err = eng.HelmUp(*repoPath)
+		case "status":
+			var out string
+			out, err = eng.HelmStatus(*repoPath)
+			if err == nil {
+				fmt.Print(out)
+			}
+		case "down":
+			err = eng.HelmDown(*repoPath)
+		default:
+			log.Fatal("Use: helm up|status|down")
+		}
 	case "help", "-h", "--help":
 		usage()
 		return
