@@ -57,6 +57,31 @@ func composeStream(repoPath string, files []string, opArgs ...string) (string, e
 	return out, nil
 }
 
+// Runs compose ps. JSON only.
+// Stderr stays out of the JSON.
+func composePSOutput(repoPath string, files []string) (string, error) {
+	if err := checkFiles(files); err != nil {
+		return "", err
+	}
+	run := func(prog string, args []string) (string, error) {
+		cmd := exec.Command(prog, args...)
+		cmd.Dir = repoPath
+		out, err := cmd.Output()
+		return string(out), err
+	}
+	flagArgs := fileFlags(files, []string{"ps", "--format", "json"})
+	v2Args := append([]string{"compose"}, flagArgs...)
+	out, err := run("docker", v2Args)
+	if err == nil {
+		return out, nil
+	}
+	out, err = run("docker-compose", flagArgs)
+	if err != nil {
+		return "", fmt.Errorf("compose ps failed: %w", err)
+	}
+	return out, nil
+}
+
 // Returns 'compose ps' output.
 func Status(repoPath string, files []string) (string, error) {
 	return composeOutput(repoPath, files, "ps")

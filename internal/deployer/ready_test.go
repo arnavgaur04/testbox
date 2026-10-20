@@ -133,3 +133,14 @@ func TestWaitReadyFetchError(t *testing.T) {
 		t.Error("expected fetch error")
 	}
 }
+
+func TestParsePsOutputSkipsWarnings(t *testing.T) {
+	raw := "time=\"x\" level=warning msg=\"TOKEN not set\"\n{\"Service\":\"a\",\"State\":\"running\",\"Health\":\"healthy\"}\n"
+	states, err := ParsePsOutput(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(states) != 1 || states[0].Service != "a" {
+		t.Errorf("wrong parse: %+v", states)
+	}
+}

@@ -3,19 +3,25 @@ package deployer
 import (
 	"fmt"
 	"testbox/pkg/models"
+	"time"
 )
 
 // SuiteResult holds one suite outcome.
 type SuiteResult struct {
-	Name   string
-	Passed bool
-	Output string
+	Name     string
+	Passed   bool
+	Output   string
+	Duration time.Duration
 }
 
 // Runs one suite. Copies files first.
 // Passed mirrors the exec exit code.
-func RunSuite(repoPath string, files []string, suite models.TestSuite) (SuiteResult, error) {
-	res := SuiteResult{Name: suite.Name}
+func RunSuite(repoPath string, files []string, suite models.TestSuite) (res SuiteResult, err error) {
+	res.Name = suite.Name
+	start := time.Now()
+	defer func() {
+		res.Duration = time.Since(start)
+	}()
 	for _, c := range suite.Copy {
 		parts := models.SplitCopyPair(c)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {

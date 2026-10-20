@@ -20,6 +20,7 @@ func usage() {
 	fmt.Println("  logs [service]  Show compose logs. Optional service name.")
 	fmt.Println("  run     Build then up. Default when no command is given.")
 	fmt.Println("  test [--cleanup] [--wait 2m]")
+	fmt.Println("  test [--json out.json] [--junit out.xml]")
 	fmt.Println("          Up, wait ready, run tests: suites.")
 	fmt.Println("  helm up|status|down")
 	fmt.Println("          Deploy, inspect, remove helm release.")
@@ -47,6 +48,8 @@ func main() {
 	volumes := false
 	cleanup := false
 	wait := engine.DefaultWait
+	reportJSON := ""
+	reportJUnit := ""
 	extra := []string{}
 	if len(rest) > 1 {
 		extra = rest[1:]
@@ -58,6 +61,18 @@ func main() {
 			volumes = true
 		case a == "--cleanup":
 			cleanup = true
+		case a == "--json":
+			if i+1 >= len(extra) {
+				log.Fatal("--json needs a file path")
+			}
+			i++
+			reportJSON = extra[i]
+		case a == "--junit":
+			if i+1 >= len(extra) {
+				log.Fatal("--junit needs a file path")
+			}
+			i++
+			reportJUnit = extra[i]
 		case a == "--wait":
 			if i+1 >= len(extra) {
 				log.Fatal("--wait needs a duration, for example 2m")
@@ -103,7 +118,13 @@ func main() {
 	case "run":
 		err = eng.Run(*repoPath)
 	case "test":
-		_, err = eng.Test(*repoPath, engine.TestOptions{Wait: wait, Cleanup: cleanup, Volumes: volumes})
+		_, err = eng.Test(*repoPath, engine.TestOptions{
+			Wait:        wait,
+			Cleanup:     cleanup,
+			Volumes:     volumes,
+			ReportJSON:  reportJSON,
+			ReportJUnit: reportJUnit,
+		})
 	case "helm":
 		action := ""
 		if len(rest) > 1 {
