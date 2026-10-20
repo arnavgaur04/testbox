@@ -10,11 +10,30 @@ import (
 // Holds the Engine for handlers.
 // HTTP stays thin. Logic in Engine.
 type Server struct {
-	eng *engine.Engine
+	eng   *engine.Engine
+	guard *Guard
 }
 
 func NewServer() *Server {
-	return &Server{eng: engine.NewEngine()}
+	g, _ := NewGuard("", nil)
+	return &Server{eng: engine.NewEngine(), guard: g}
+}
+
+// Server with auth and repo allowlist.
+func NewServerWithGuard(g *Guard) *Server {
+	if g == nil {
+		g, _ = NewGuard("", nil)
+	}
+	return &Server{eng: engine.NewEngine(), guard: g}
+}
+
+// Rejects repos outside the allowlist.
+func (s *Server) repoOK(w http.ResponseWriter, repo string) bool {
+	if err := s.guard.RepoAllowed(repo); err != nil {
+		writeErr(w, http.StatusForbidden, err.Error())
+		return false
+	}
+	return true
 }
 
 // Common body for most routes.
@@ -55,6 +74,9 @@ func (s *Server) decodeRepo(w http.ResponseWriter, r *http.Request) (string, boo
 	}
 	if req.Repo == "" {
 		writeErr(w, http.StatusBadRequest, "field repo is required")
+		return "", false
+	}
+	if !s.repoOK(w, req.Repo) {
 		return "", false
 	}
 	return req.Repo, true
@@ -113,6 +135,9 @@ func (s *Server) handleDown(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "field repo is required")
 		return
 	}
+	if !s.repoOK(w, req.Repo) {
+		return
+	}
 	if err := s.eng.Down(req.Repo, req.Volumes); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -155,6 +180,9 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Repo == "" {
 		writeErr(w, http.StatusBadRequest, "field repo is required")
+		return
+	}
+	if !s.repoOK(w, req.Repo) {
 		return
 	}
 	opts := engine.TestOptions{Cleanup: req.Cleanup, Volumes: req.Volumes}
@@ -225,6 +253,9 @@ func (s *Server) handleHelmStatus(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "field repo is required (query ?repo= or JSON)")
 		return
 	}
+	if !s.repoOK(w, repo) {
+		return
+	}
 	out, err := s.eng.HelmStatus(repo)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -282,6 +313,9 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "field repo is required (query ?repo= or JSON)")
 		return
 	}
+	if !s.repoOK(w, repo) {
+		return
+	}
 	out, err := s.eng.Status(repo)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -307,6 +341,9 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	if repo == "" {
 		writeErr(w, http.StatusBadRequest, "field repo is required")
+		return
+	}
+	if !s.repoOK(w, repo) {
 		return
 	}
 	out, err := s.eng.Logs(repo, service, tail)
@@ -337,5 +374,5 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/helm/down", s.handleHelmDown)
 	mux.HandleFunc("/v1/status", s.handleStatus)
 	mux.HandleFunc("/v1/logs", s.handleLogs)
-	return mux
+	return s.guard.Middleware(mux)
 }
