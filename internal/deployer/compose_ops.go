@@ -2,6 +2,7 @@ package deployer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -37,11 +38,16 @@ func composeOutput(repoPath string, files []string, opArgs ...string) (string, e
 // Streams a compose command live.
 // Full output returned for errors.
 func composeStream(repoPath string, files []string, opArgs ...string) (string, error) {
+	return composeStreamContext(context.Background(), repoPath, files, opArgs...)
+}
+
+// Context variant. Kills on deadline.
+func composeStreamContext(ctx context.Context, repoPath string, files []string, opArgs ...string) (string, error) {
 	if err := checkFiles(files); err != nil {
 		return "", err
 	}
 	run := func(prog string, args []string) (string, error) {
-		return streamCommand(repoPath, prog, args)
+		return streamCommandContext(ctx, repoPath, prog, args)
 	}
 	flagArgs := fileFlags(files, opArgs)
 	v2Args := append([]string{"compose"}, flagArgs...)
@@ -89,13 +95,20 @@ func Status(repoPath string, files []string) (string, error) {
 
 // Returns 'compose logs' output.
 // Empty service means all.
-func Logs(repoPath string, files []string, service string, tail string) (string, error) {
+func Logs(repoPath string, files []string, service string, tail string, follow bool) (string, error) {
 	if tail == "" {
 		tail = "100"
 	}
 	args := []string{"logs", "--tail", tail}
+	if follow {
+		args = append(args, "-f")
+	}
 	if service != "" {
 		args = append(args, service)
+	}
+	// Follow streams until the user stops it.
+	if follow {
+		return composeStream(repoPath, files, args...)
 	}
 	return composeOutput(repoPath, files, args...)
 }
@@ -116,8 +129,13 @@ func checkFiles(files []string) error {
 
 // Streams a command. Keeps full output.
 func streamCommand(repoPath string, prog string, args []string) (string, error) {
+	return streamCommandContext(context.Background(), repoPath, prog, args)
+}
+
+// Context variant. Kills on deadline.
+func streamCommandContext(ctx context.Context, repoPath string, prog string, args []string) (string, error) {
 	var buf bytes.Buffer
-	cmd := exec.Command(prog, args...)
+	cmd := exec.CommandContext(ctx, prog, args...)
 	cmd.Dir = repoPath
 	cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, &buf)

@@ -381,3 +381,28 @@ func TestHelmMissingRelease(t *testing.T) {
 		t.Error("expected error for missing release_name")
 	}
 }
+
+func TestTestsTimeout(t *testing.T) {
+	y := testsYaml(`tests:
+  - name: unit
+    service: a
+    command: pytest -q
+    timeout: 5m
+`)
+	cfg, err := ParseMakeYaml(writeTempYaml(t, y))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Tests[0].Timeout != "5m" {
+		t.Errorf("wrong timeout: %q", cfg.Tests[0].Timeout)
+	}
+}
+
+func TestTestsBadTimeout(t *testing.T) {
+	for _, bad := range []string{"soon", "-1m", "0"} {
+		y := testsYaml("tests:\n  - name: unit\n    service: a\n    command: x\n    timeout: " + bad + "\n")
+		if _, err := ParseMakeYaml(writeTempYaml(t, y)); err == nil {
+			t.Errorf("expected error for timeout %q", bad)
+		}
+	}
+}

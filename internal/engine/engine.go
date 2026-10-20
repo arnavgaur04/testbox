@@ -131,7 +131,7 @@ func (e *Engine) Status(repoPath string) (string, error) {
 }
 
 // Returns compose logs output.
-func (e *Engine) Logs(repoPath string, service string, tail string) (string, error) {
+func (e *Engine) Logs(repoPath string, service string, tail string, follow bool) (string, error) {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return "", err
@@ -140,7 +140,7 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 	if err != nil {
 		return "", err
 	}
-	return deployer.Logs(repoPath, files, service, tail)
+	return deployer.Logs(repoPath, files, service, tail, follow)
 }
 
 // TestOptions tunes the test run.
@@ -187,11 +187,18 @@ func (e *Engine) Test(repoPath string, opts TestOptions) ([]deployer.SuiteResult
 	results := []deployer.SuiteResult{}
 	failed := 0
 	for _, suite := range config.Tests {
-		res, err := deployer.RunSuite(repoPath, files, suite)
+		timeout := time.Duration(0)
+		if suite.Timeout != "" {
+			timeout, err = time.ParseDuration(suite.Timeout)
+			if err != nil {
+				return results, fmt.Errorf("bad timeout for %s: %w", suite.Name, err)
+			}
+		}
+		res, err := deployer.RunSuite(repoPath, files, suite, timeout)
 		results = append(results, res)
 		if err != nil {
 			failed++
-			fmt.Printf("FAIL %s\n", suite.Name)
+			fmt.Printf("FAIL %s: %v\n", suite.Name, err)
 			continue
 		}
 		fmt.Printf("PASS %s\n", suite.Name)

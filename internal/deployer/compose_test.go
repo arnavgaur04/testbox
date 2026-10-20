@@ -44,7 +44,7 @@ func TestStatusMissingFile(t *testing.T) {
 }
 
 func TestLogsMissingFile(t *testing.T) {
-	if _, err := Logs(t.TempDir(), []string{"/no/such/compose.yaml"}, "", "10"); err == nil {
+	if _, err := Logs(t.TempDir(), []string{"/no/such/compose.yaml"}, "", "10", false); err == nil {
 		t.Error("expected error for missing compose file")
 	}
 }
@@ -172,14 +172,20 @@ func TestFileFlags(t *testing.T) {
 
 func TestRunSuiteBadCopy(t *testing.T) {
 	suite := models.TestSuite{Name: "s", Service: "a", Command: "true", Copy: []string{"nodst"}}
-	if _, err := RunSuite(t.TempDir(), []string{}, suite); err == nil {
+	if _, err := RunSuite(t.TempDir(), []string{}, suite, 0); err == nil {
 		t.Error("expected error for bad copy")
 	}
 }
 
 func TestRunSuiteMissingFile(t *testing.T) {
 	suite := models.TestSuite{Name: "s", Service: "a", Command: "true"}
-	if _, err := RunSuite(t.TempDir(), []string{"/no/such.yaml"}, suite); err == nil {
+	if _, err := RunSuite(t.TempDir(), []string{"/no/such.yaml"}, suite, 0); err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
+func TestLogsFollowMissingFile(t *testing.T) {
+	if _, err := Logs(t.TempDir(), []string{"/no/such.yaml"}, "", "10", true); err == nil {
 		t.Error("expected error for missing file")
 	}
 }
