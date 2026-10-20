@@ -353,7 +353,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	if !s.repoOK(w, repo) {
 		return
 	}
-	out, err := s.eng.Logs(repo, service, tail)
+	out, err := s.eng.Logs(repo, service, tail, false)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

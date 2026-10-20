@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -124,6 +125,12 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 		if t.Command == "" {
 			return fmt.Errorf("tests.command is required for %s", t.Name)
+		}
+		if t.Timeout != "" {
+			d, err := time.ParseDuration(t.Timeout)
+			if err != nil || d <= 0 {
+				return fmt.Errorf("invalid tests.timeout %q for %s", t.Timeout, t.Name)
+			}
 		}
 		for _, c := range t.Copy {
 			parts := models.SplitCopyPair(c)

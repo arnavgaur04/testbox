@@ -17,7 +17,8 @@ func usage() {
 	fmt.Println("  down [-v]  Stop services. -v wipes volumes.")
 	fmt.Println("  reset   Fresh state. Down -v, then up.")
 	fmt.Println("  status  Show compose ps output.")
-	fmt.Println("  logs [service]  Show compose logs. Optional service name.")
+	fmt.Println("  logs [service] [-f]")
+	fmt.Println("          Show compose logs. -f follows.")
 	fmt.Println("  run     Build then up. Default when no command is given.")
 	fmt.Println("  test [--cleanup] [--wait 2m]")
 	fmt.Println("  test [--json out.json] [--junit out.xml]")
@@ -47,6 +48,7 @@ func main() {
 	service := ""
 	volumes := false
 	cleanup := false
+	follow := false
 	wait := engine.DefaultWait
 	reportJSON := ""
 	reportJUnit := ""
@@ -61,6 +63,8 @@ func main() {
 			volumes = true
 		case a == "--cleanup":
 			cleanup = true
+		case a == "-f" || a == "--follow":
+			follow = true
 		case a == "--json":
 			if i+1 >= len(extra) {
 				log.Fatal("--json needs a file path")
@@ -111,7 +115,7 @@ func main() {
 		}
 	case "logs":
 		var out string
-		out, err = eng.Logs(*repoPath, service, *tail)
+		out, err = eng.Logs(*repoPath, service, *tail, follow)
 		if err == nil {
 			fmt.Print(out)
 		}

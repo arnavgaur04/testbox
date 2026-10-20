@@ -43,6 +43,7 @@ type TestSuite struct {
 	Service string   `yaml:"service"`
 	Command string   `yaml:"command"`
 	Copy    []string `yaml:"copy,omitempty"`
+	Timeout string   `yaml:"timeout,omitempty"` // Go duration, for example 5m
 }
 
 // SplitCopyPair splits src:dst pairs.
