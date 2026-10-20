@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testbox/internal/engine"
+	"time"
 )
 
 // Holds the Engine for handlers.
@@ -142,11 +143,30 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusMethodNotAllowed, "use POST")
 		return
 	}
-	repo, ok := s.decodeRepo(w, r)
-	if !ok {
+	var req struct {
+		Repo    string `json:"repo"`
+		Cleanup bool   `json:"cleanup"`
+		Volumes bool   `json:"volumes"`
+		Wait    string `json:"wait"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	results, err := s.eng.Test(repo)
+	if req.Repo == "" {
+		writeErr(w, http.StatusBadRequest, "field repo is required")
+		return
+	}
+	opts := engine.TestOptions{Cleanup: req.Cleanup, Volumes: req.Volumes}
+	if req.Wait != "" {
+		d, err := time.ParseDuration(req.Wait)
+		if err != nil || d <= 0 {
+			writeErr(w, http.StatusBadRequest, "field wait must be a positive duration")
+			return
+		}
+		opts.Wait = d
+	}
+	results, err := s.eng.Test(req.Repo, opts)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -157,11 +177,20 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 		Output string `json:"output"`
 	}
 	items := []item{}
+	passed := 0
 	for _, res := range results {
 		items = append(items, item{Name: res.Name, Passed: res.Passed, Output: res.Output})
+		if res.Passed {
+			passed++
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "results": items})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":      true,
+		"results": items,
+		"passed":  passed,
+		"failed":  len(items) - passed,
+	})
 }
 
 // Runs Build then Up.

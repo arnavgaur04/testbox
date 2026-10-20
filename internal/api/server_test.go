@@ -105,3 +105,24 @@ func TestLogsMissingRepo(t *testing.T) {
 		t.Errorf("expected 400, got %d", rec.Code)
 	}
 }
+
+func TestTestBadWait(t *testing.T) {
+	s := NewServer()
+	body := `{"repo":"/tmp","wait":"soon"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/test", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for bad wait, got %d", rec.Code)
+	}
+}
+
+func TestTestMissingRepo(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodPost, "/v1/test", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for missing repo, got %d", rec.Code)
+	}
+}
