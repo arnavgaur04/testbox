@@ -126,3 +126,24 @@ func TestTestMissingRepo(t *testing.T) {
 		t.Errorf("expected 400 for missing repo, got %d", rec.Code)
 	}
 }
+
+func TestHelmStatusBadRepo(t *testing.T) {
+	s := NewServer()
+	req := httptest.NewRequest(http.MethodGet, "/v1/helm/status?repo=/no/such/dir", nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for bad repo, got %d", rec.Code)
+	}
+}
+
+func TestHelmUpBadRepo(t *testing.T) {
+	s := NewServer()
+	body := `{"repo":"/no/such/dir"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/helm/up", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for bad repo, got %d", rec.Code)
+	}
+}

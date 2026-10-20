@@ -41,13 +41,7 @@ func composeStream(repoPath string, files []string, opArgs ...string) (string, e
 		return "", err
 	}
 	run := func(prog string, args []string) (string, error) {
-		var buf bytes.Buffer
-		cmd := exec.Command(prog, args...)
-		cmd.Dir = repoPath
-		cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
-		cmd.Stderr = io.MultiWriter(os.Stderr, &buf)
-		err := cmd.Run()
-		return buf.String(), err
+		return streamCommand(repoPath, prog, args)
 	}
 	flagArgs := fileFlags(files, opArgs)
 	v2Args := append([]string{"compose"}, flagArgs...)
@@ -93,6 +87,17 @@ func checkFiles(files []string) error {
 		}
 	}
 	return nil
+}
+
+// Streams a command. Keeps full output.
+func streamCommand(repoPath string, prog string, args []string) (string, error) {
+	var buf bytes.Buffer
+	cmd := exec.Command(prog, args...)
+	cmd.Dir = repoPath
+	cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &buf)
+	err := cmd.Run()
+	return buf.String(), err
 }
 
 // Builds -f flags for each file.

@@ -193,6 +193,63 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Runs Engine.HelmUp.
+func (s *Server) handleHelmUp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	repo, ok := s.decodeRepo(w, r)
+	if !ok {
+		return
+	}
+	if err := s.eng.HelmUp(repo); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeOK(w, "helm deploy completed")
+}
+
+// Runs Engine.HelmStatus.
+func (s *Server) handleHelmStatus(w http.ResponseWriter, r *http.Request) {
+	repo := r.URL.Query().Get("repo")
+	if r.Method == http.MethodPost {
+		var req repoRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeErr(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		repo = req.Repo
+	}
+	if repo == "" {
+		writeErr(w, http.StatusBadRequest, "field repo is required (query ?repo= or JSON)")
+		return
+	}
+	out, err := s.eng.HelmStatus(repo)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeOK(w, out)
+}
+
+// Runs Engine.HelmDown.
+func (s *Server) handleHelmDown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	repo, ok := s.decodeRepo(w, r)
+	if !ok {
+		return
+	}
+	if err := s.eng.HelmDown(repo); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeOK(w, "helm release removed")
+}
+
 // Runs Build then Up.
 func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -275,6 +332,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/reset", s.handleReset)
 	mux.HandleFunc("/v1/test", s.handleTest)
 	mux.HandleFunc("/v1/run", s.handleRun)
+	mux.HandleFunc("/v1/helm/up", s.handleHelmUp)
+	mux.HandleFunc("/v1/helm/status", s.handleHelmStatus)
+	mux.HandleFunc("/v1/helm/down", s.handleHelmDown)
 	mux.HandleFunc("/v1/status", s.handleStatus)
 	mux.HandleFunc("/v1/logs", s.handleLogs)
 	return mux

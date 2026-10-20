@@ -334,3 +334,50 @@ mcp:
 		}
 	}
 }
+
+func helmYaml(helm string) string {
+	return `app:
+  name: "a"
+  version: "1"
+docker:
+  context: "."
+  dockerfile: "Dockerfile"
+  image_name: "a:latest"
+local_deploy:
+  auto_generate_compose: true
+  services:
+    - service_name: "a"
+      port: 8080
+` + helm
+}
+
+func TestHelmValid(t *testing.T) {
+	y := `helm:
+  chart_path: ./charts/app
+  values_file: ./charts/values.yaml
+  release_name: app
+  namespace: prod
+  kube_context: colima
+`
+	cfg, err := ParseMakeYaml(writeTempYaml(t, helmYaml(y)))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Helm == nil || cfg.Helm.ReleaseName != "app" || cfg.Helm.Namespace != "prod" {
+		t.Errorf("wrong helm config: %+v", cfg.Helm)
+	}
+}
+
+func TestHelmMissingChart(t *testing.T) {
+	y := "helm:\n  release_name: app\n"
+	if _, err := ParseMakeYaml(writeTempYaml(t, helmYaml(y))); err == nil {
+		t.Error("expected error for missing chart_path")
+	}
+}
+
+func TestHelmMissingRelease(t *testing.T) {
+	y := "helm:\n  chart_path: ./chart\n"
+	if _, err := ParseMakeYaml(writeTempYaml(t, helmYaml(y))); err == nil {
+		t.Error("expected error for missing release_name")
+	}
+}

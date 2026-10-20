@@ -76,6 +76,16 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 	}
 
+	// Helm checks. Only when configured.
+	if config.Helm != nil {
+		if config.Helm.ChartPath == "" {
+			return fmt.Errorf("helm.chart_path is required")
+		}
+		if config.Helm.ReleaseName == "" {
+			return fmt.Errorf("helm.release_name is required")
+		}
+	}
+
 	// MCP checks. Only when enabled.
 	if config.Mcp != nil && config.Mcp.Enabled {
 		if config.Mcp.OpenAPI == "" && config.Mcp.ToolsFile == "" {
