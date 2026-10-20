@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"testbox/internal/engine"
+	"time"
 )
 
 func usage() {
@@ -18,7 +19,8 @@ func usage() {
 	fmt.Println("  status  Show compose ps output.")
 	fmt.Println("  logs [service]  Show compose logs. Optional service name.")
 	fmt.Println("  run     Build then up. Default when no command is given.")
-	fmt.Println("  test    Up, then run tests: suites.")
+	fmt.Println("  test [--cleanup] [--wait 2m]")
+	fmt.Println("          Up, wait ready, run tests: suites.")
 	fmt.Println("")
 	fmt.Println("Flags:")
 	flag.PrintDefaults()
@@ -38,20 +40,36 @@ func main() {
 		cmd = rest[0]
 	}
 	// Optional service name for logs.
-	// Optional -v flag for down.
+	// Flags for down and test.
 	service := ""
 	volumes := false
+	cleanup := false
+	wait := engine.DefaultWait
 	extra := []string{}
 	if len(rest) > 1 {
 		extra = rest[1:]
 	}
-	for _, a := range extra {
-		if a == "-v" || a == "--volumes" {
+	for i := 0; i < len(extra); i++ {
+		a := extra[i]
+		switch {
+		case a == "-v" || a == "--volumes":
 			volumes = true
-			continue
-		}
-		if service == "" {
-			service = a
+		case a == "--cleanup":
+			cleanup = true
+		case a == "--wait":
+			if i+1 >= len(extra) {
+				log.Fatal("--wait needs a duration, for example 2m")
+			}
+			i++
+			d, err := time.ParseDuration(extra[i])
+			if err != nil {
+				log.Fatalf("Invalid --wait: %v", err)
+			}
+			wait = d
+		default:
+			if service == "" {
+				service = a
+			}
 		}
 	}
 
@@ -83,7 +101,7 @@ func main() {
 	case "run":
 		err = eng.Run(*repoPath)
 	case "test":
-		_, err = eng.Test(*repoPath)
+		_, err = eng.Test(*repoPath, engine.TestOptions{Wait: wait, Cleanup: cleanup, Volumes: volumes})
 	case "help", "-h", "--help":
 		usage()
 		return

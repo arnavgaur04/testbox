@@ -8,6 +8,7 @@ import (
 	"testbox/internal/docker"
 	"testbox/internal/parser"
 	"testbox/pkg/models"
+	"time"
 )
 
 type Engine struct {
@@ -141,9 +142,20 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 	return deployer.Logs(repoPath, files, service, tail)
 }
 
-// Runs test suites. Up first.
+// TestOptions tunes the test run.
+// Zero value uses defaults.
+type TestOptions struct {
+	Wait    time.Duration
+	Cleanup bool
+	Volumes bool
+}
+
+// Default wait when none given.
+const DefaultWait = 120 * time.Second
+
+// Runs test suites. Up and wait first.
 // Runs all suites. Errors at end.
-func (e *Engine) Test(repoPath string) ([]deployer.SuiteResult, error) {
+func (e *Engine) Test(repoPath string, opts TestOptions) ([]deployer.SuiteResult, error) {
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return nil, err
@@ -159,6 +171,15 @@ func (e *Engine) Test(repoPath string) ([]deployer.SuiteResult, error) {
 	if err := deployer.Up(repoPath, files); err != nil {
 		return nil, err
 	}
+	wait := opts.Wait
+	if wait == 0 {
+		wait = DefaultWait
+	}
+	fmt.Printf("Waiting up to %s for services.\n", wait)
+	if err := deployer.WaitComposeReady(repoPath, files, wait); err != nil {
+		return nil, err
+	}
+	fmt.Println("Services ready.")
 	results := []deployer.SuiteResult{}
 	failed := 0
 	for _, suite := range config.Tests {
@@ -172,10 +193,15 @@ func (e *Engine) Test(repoPath string) ([]deployer.SuiteResult, error) {
 		fmt.Printf("PASS %s\n", suite.Name)
 	}
 	fmt.Printf("%d passed, %d failed\n", len(results)-failed, failed)
+	var cleanupErr error
+	if opts.Cleanup {
+		fmt.Println("Cleaning up services.")
+		cleanupErr = e.Down(repoPath, opts.Volumes)
+	}
 	if failed > 0 {
 		return results, fmt.Errorf("%d suites failed", failed)
 	}
-	return results, nil
+	return results, cleanupErr
 }
 
 // Build then Up in one step.
