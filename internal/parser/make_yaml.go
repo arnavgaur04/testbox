@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -85,6 +86,14 @@ func validateConfig(config *models.MakeYaml) error {
 		}
 		if config.Mcp.Port <= 0 || config.Mcp.Port > 65535 {
 			return fmt.Errorf("invalid mcp.port %d: must be between 1 and 65535", config.Mcp.Port)
+		}
+		for name := range config.Mcp.Headers {
+			if strings.TrimSpace(name) == "" {
+				return fmt.Errorf("mcp.headers has an empty name")
+			}
+			if strings.ContainsAny(name, " \t\r\n:") {
+				return fmt.Errorf("invalid mcp header name %q", name)
+			}
 		}
 	}
 

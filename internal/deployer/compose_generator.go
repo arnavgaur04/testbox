@@ -120,7 +120,7 @@ func mcpServiceInfo(repoPath string, config *models.MakeYaml) (*testmcp.ServiceI
 	for _, s := range config.LocalDeploy.Services {
 		dependsOn = append(dependsOn, s.ServiceName)
 	}
-	return testmcp.WriteBuildContext(repoPath, config.Mcp.OpenAPI, config.Mcp.ToolsFile, target, config.Mcp.Port, config.Mcp.Image, dependsOn)
+	return testmcp.WriteBuildContext(repoPath, config.Mcp.OpenAPI, config.Mcp.ToolsFile, target, config.Mcp.Port, config.Mcp.Image, dependsOn, config.Mcp.Headers)
 }
 
 // Override adds only the mcp block.

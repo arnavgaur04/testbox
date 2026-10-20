@@ -60,9 +60,10 @@ type HelmConfig struct {
 // Optional per-service MCP server.
 // Off unless enabled is true.
 type McpConfig struct {
-	Enabled   bool   `yaml:"enabled"`
-	OpenAPI   string `yaml:"openapi,omitempty"`    // file path or http(s) URL of OpenAPI spec
-	ToolsFile string `yaml:"tools_file,omitempty"` // file path with custom tool defs and overrides
-	Port      int    `yaml:"port,omitempty"`       // host port for MCP HTTP. Default 8082.
-	Image     string `yaml:"image,omitempty"`      // optional prebuilt image. Skips local build.
+	Enabled   bool              `yaml:"enabled"`
+	OpenAPI   string            `yaml:"openapi,omitempty"`    // file path or http(s) URL of OpenAPI spec
+	ToolsFile string            `yaml:"tools_file,omitempty"` // file path with custom tool defs and overrides
+	Port      int               `yaml:"port,omitempty"`       // host port for MCP HTTP. Default 8082.
+	Image     string            `yaml:"image,omitempty"`      // optional prebuilt image. Skips local build.
+	Headers   map[string]string `yaml:"headers,omitempty"`    // sent on every tool call
 }
