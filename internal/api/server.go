@@ -169,10 +169,12 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Repo    string `json:"repo"`
-		Cleanup bool   `json:"cleanup"`
-		Volumes bool   `json:"volumes"`
-		Wait    string `json:"wait"`
+		Repo        string `json:"repo"`
+		Cleanup     bool   `json:"cleanup"`
+		Volumes     bool   `json:"volumes"`
+		Wait        string `json:"wait"`
+		ReportJSON  string `json:"report_json"`
+		ReportJUnit string `json:"report_junit"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid JSON body")
@@ -185,7 +187,12 @@ func (s *Server) handleTest(w http.ResponseWriter, r *http.Request) {
 	if !s.repoOK(w, req.Repo) {
 		return
 	}
-	opts := engine.TestOptions{Cleanup: req.Cleanup, Volumes: req.Volumes}
+	opts := engine.TestOptions{
+		Cleanup:     req.Cleanup,
+		Volumes:     req.Volumes,
+		ReportJSON:  req.ReportJSON,
+		ReportJUnit: req.ReportJUnit,
+	}
 	if req.Wait != "" {
 		d, err := time.ParseDuration(req.Wait)
 		if err != nil || d <= 0 {

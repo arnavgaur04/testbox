@@ -33,7 +33,8 @@ func ParsePsOutput(raw string) ([]ServiceState, error) {
 	states := []ServiceState{}
 	for _, line := range strings.Split(trimmed, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		// Skip compose warnings and notes.
+		if !strings.HasPrefix(line, "{") {
 			continue
 		}
 		var st ServiceState
@@ -100,7 +101,7 @@ func WaitReady(fetch func() ([]ServiceState, error), timeout time.Duration, poll
 // Waits for compose services to be ready.
 func WaitComposeReady(repoPath string, files []string, timeout time.Duration) error {
 	fetch := func() ([]ServiceState, error) {
-		out, err := composeOutput(repoPath, files, "ps", "--format", "json")
+		out, err := composePSOutput(repoPath, files)
 		if err != nil {
 			return nil, err
 		}

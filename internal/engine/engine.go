@@ -7,6 +7,7 @@ import (
 	"testbox/internal/deployer"
 	"testbox/internal/docker"
 	"testbox/internal/parser"
+	"testbox/internal/report"
 	"testbox/pkg/models"
 	"time"
 )
@@ -145,9 +146,11 @@ func (e *Engine) Logs(repoPath string, service string, tail string) (string, err
 // TestOptions tunes the test run.
 // Zero value uses defaults.
 type TestOptions struct {
-	Wait    time.Duration
-	Cleanup bool
-	Volumes bool
+	Wait        time.Duration
+	Cleanup     bool
+	Volumes     bool
+	ReportJSON  string
+	ReportJUnit string
 }
 
 // Default wait when none given.
@@ -156,6 +159,7 @@ const DefaultWait = 120 * time.Second
 // Runs test suites. Up and wait first.
 // Runs all suites. Errors at end.
 func (e *Engine) Test(repoPath string, opts TestOptions) ([]deployer.SuiteResult, error) {
+	started := time.Now()
 	config, err := e.LoadConfig(repoPath)
 	if err != nil {
 		return nil, err
@@ -193,6 +197,21 @@ func (e *Engine) Test(repoPath string, opts TestOptions) ([]deployer.SuiteResult
 		fmt.Printf("PASS %s\n", suite.Name)
 	}
 	fmt.Printf("%d passed, %d failed\n", len(results)-failed, failed)
+	if opts.ReportJSON != "" || opts.ReportJUnit != "" {
+		run := report.Build(repoPath, config.App.Name, config.App.Version, started, results)
+		if opts.ReportJSON != "" {
+			if err := report.WriteJSON(opts.ReportJSON, run); err != nil {
+				return results, err
+			}
+			fmt.Printf("JSON report: %s\n", opts.ReportJSON)
+		}
+		if opts.ReportJUnit != "" {
+			if err := report.WriteJUnit(opts.ReportJUnit, run); err != nil {
+				return results, err
+			}
+			fmt.Printf("JUnit report: %s\n", opts.ReportJUnit)
+		}
+	}
 	var cleanupErr error
 	if opts.Cleanup {
 		fmt.Println("Cleaning up services.")
